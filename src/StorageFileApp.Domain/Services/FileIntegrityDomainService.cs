@@ -1,6 +1,4 @@
-using StorageFileApp.Domain.Entities.FileEntity;
 using StorageFileApp.Domain.Entities.ChunkEntity;
-using StorageFileApp.SharedKernel.Exceptions;
 using System.Security.Cryptography;
 using FileEntity = StorageFileApp.Domain.Entities.FileEntity.File;
 
@@ -10,9 +8,8 @@ public class FileIntegrityDomainService : IFileIntegrityDomainService
 {
     public async Task<string> CalculateFileChecksumAsync(Stream fileStream)
     {
-        if (fileStream == null)
-            throw new ArgumentNullException(nameof(fileStream));
-            
+        ArgumentNullException.ThrowIfNull(fileStream);
+
         using var sha256 = SHA256.Create();
         var hashBytes = await sha256.ComputeHashAsync(fileStream);
         return Convert.ToHexString(hashBytes);
@@ -20,9 +17,8 @@ public class FileIntegrityDomainService : IFileIntegrityDomainService
     
     public async Task<bool> ValidateFileIntegrityAsync(FileEntity file, IEnumerable<FileChunk> chunks, IEnumerable<byte[]> chunkData)
     {
-        if (file == null)
-            throw new ArgumentNullException(nameof(file));
-            
+        ArgumentNullException.ThrowIfNull(file);
+
         var chunksList = chunks.ToList();
         var chunkDataList = chunkData.ToList();
         
@@ -39,7 +35,7 @@ public class FileIntegrityDomainService : IFileIntegrityDomainService
             return false;
             
         // Individual chunk validation
-        for (int i = 0; i < chunksList.Count; i++)
+        for (var i = 0; i < chunksList.Count; i++)
         {
             var chunk = chunksList[i];
             var data = chunkDataList[i];
@@ -61,7 +57,7 @@ public class FileIntegrityDomainService : IFileIntegrityDomainService
         var orderedChunks = chunks.OrderBy(c => c.Order).ToList();
         
         // Check if chunks are sequential starting from 0
-        for (int i = 0; i < orderedChunks.Count; i++)
+        for (var i = 0; i < orderedChunks.Count; i++)
         {
             if (orderedChunks[i].Order != i)
                 return Task.FromResult(false);
@@ -76,7 +72,7 @@ public class FileIntegrityDomainService : IFileIntegrityDomainService
         return Task.FromResult(totalSize);
     }
     
-    private async Task<string> CalculateChunkChecksumAsync(byte[] data)
+    private static async Task<string> CalculateChunkChecksumAsync(byte[] data)
     {
         using var sha256 = SHA256.Create();
         var hashBytes = await sha256.ComputeHashAsync(new MemoryStream(data));

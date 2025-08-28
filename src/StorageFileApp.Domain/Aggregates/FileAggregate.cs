@@ -1,4 +1,3 @@
-using StorageFileApp.Domain.Entities.FileEntity;
 using StorageFileApp.Domain.Entities.ChunkEntity;
 using StorageFileApp.Domain.Events;
 using StorageFileApp.Domain.Enums;
