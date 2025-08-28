@@ -1,14 +1,18 @@
+using StorageFileApp.Domain.Enums;
+
 namespace StorageFileApp.Domain.Entities.ChunkEntity;
 
 public class FileChunk
 {
-    public Guid Id { get; set; }
-    public Guid FileId { get; set; }
-    public int Order { get; set; }
-    public long Size { get; set; }
-    public required string Checksum { get; set; }
-    public Guid StorageProviderId { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public Guid Id { get; private set; }
+    public Guid FileId { get; private set; }
+    public int Order { get; private set; }
+    public long Size { get; private set; }
+    public string Checksum { get; private set; } = string.Empty;
+    public Guid StorageProviderId { get; private set; }
+    public ChunkStatus Status { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
     
     private FileChunk() { } 
     
@@ -20,6 +24,13 @@ public class FileChunk
         Size = size;
         Checksum = checksum ?? throw new ArgumentNullException(nameof(checksum));
         StorageProviderId = storageProviderId;
+        Status = ChunkStatus.Pending;
         CreatedAt = DateTime.UtcNow;
+    }
+    
+    public void UpdateStatus(ChunkStatus status)
+    {
+        Status = status;
+        UpdatedAt = DateTime.UtcNow;
     }
 }
