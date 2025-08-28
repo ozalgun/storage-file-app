@@ -1,12 +1,6 @@
 namespace StorageFileApp.SharedKernel.Exceptions;
 
-public class FileNotFoundException : DomainException
+public class FileNotFoundException(Guid fileId) : DomainException($"File with ID {fileId} was not found.")
 {
-    public Guid FileId { get; }
-    
-    public FileNotFoundException(Guid fileId) 
-        : base($"File with ID {fileId} was not found.")
-    {
-        FileId = fileId;
-    }
+    public Guid FileId { get; } = fileId;
 }
