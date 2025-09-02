@@ -1,7 +1,6 @@
 using StorageFileApp.Domain.Entities.ChunkEntity;
 using StorageFileApp.Domain.Entities.StorageProviderEntity;
 using StorageFileApp.Domain.Enums;
-using StorageFileApp.SharedKernel.Exceptions;
 
 namespace StorageFileApp.Domain.Services;
 
@@ -10,7 +9,7 @@ public class ChunkHealthDomainService : IChunkHealthDomainService
     private const int MIN_REPLICATION_COUNT = 2; // Minimum replication sayısı
     private const int MAX_REPLICATION_COUNT = 5; // Maximum replication sayısı
     
-    public Task<bool> ValidateChunkHealthAsync(FileChunk chunk)
+    public Task<bool> ValidateChunkHealthAsync(FileChunk? chunk)
     {
         if (chunk == null)
             return Task.FromResult(false);
@@ -19,12 +18,9 @@ public class ChunkHealthDomainService : IChunkHealthDomainService
         if (chunk.Size <= 0)
             return Task.FromResult(false);
             
-        if (string.IsNullOrWhiteSpace(chunk.Checksum))
+        if (string.IsNullOrWhiteSpace(chunk.Checksum) || chunk.Status == ChunkStatus.Error || chunk.Status == ChunkStatus.Deleted)
             return Task.FromResult(false);
-            
-        if (chunk.Status == ChunkStatus.Error || chunk.Status == ChunkStatus.Deleted)
-            return Task.FromResult(false);
-            
+
         // Check if chunk is in a valid state
         var healthStatus = GetChunkHealthStatusAsync(chunk).Result;
         return Task.FromResult(healthStatus == ChunkHealthStatus.Healthy || healthStatus == ChunkHealthStatus.Degraded);
@@ -45,7 +41,7 @@ public class ChunkHealthDomainService : IChunkHealthDomainService
         return Task.FromResult<IEnumerable<FileChunk>>(unhealthyChunks);
     }
     
-    public Task<bool> IsChunkReplicationNeededAsync(FileChunk chunk)
+    public Task<bool> IsChunkReplicationNeededAsync(FileChunk? chunk)
     {
         if (chunk == null)
             return Task.FromResult(false);
@@ -64,7 +60,7 @@ public class ChunkHealthDomainService : IChunkHealthDomainService
         return Task.FromResult(needsReplication);
     }
     
-    public Task<ChunkHealthStatus> GetChunkHealthStatusAsync(FileChunk chunk)
+    public Task<ChunkHealthStatus> GetChunkHealthStatusAsync(FileChunk? chunk)
     {
         if (chunk == null)
             return Task.FromResult(ChunkHealthStatus.Unknown);
@@ -94,7 +90,7 @@ public class ChunkHealthDomainService : IChunkHealthDomainService
         return Task.FromResult(ChunkHealthStatus.Unknown);
     }
     
-    public Task<bool> ShouldReplicateChunkAsync(FileChunk chunk, IEnumerable<StorageProvider> availableProviders)
+    public Task<bool> ShouldReplicateChunkAsync(FileChunk? chunk, IEnumerable<StorageProvider> availableProviders)
     {
         if (chunk == null)
             return Task.FromResult(false);
@@ -113,7 +109,7 @@ public class ChunkHealthDomainService : IChunkHealthDomainService
         return Task.FromResult(replicationTargets.Any());
     }
     
-    public Task<IEnumerable<StorageProvider>> GetReplicationTargetsAsync(FileChunk chunk, IEnumerable<StorageProvider> providers)
+    public Task<IEnumerable<StorageProvider>> GetReplicationTargetsAsync(FileChunk? chunk, IEnumerable<StorageProvider> providers)
     {
         if (chunk == null)
             return Task.FromResult(Enumerable.Empty<StorageProvider>());
@@ -141,7 +137,7 @@ public class ChunkHealthDomainService : IChunkHealthDomainService
         return Task.FromResult<IEnumerable<StorageProvider>>(prioritizedTargets);
     }
     
-    public Task<bool> IsChunkRedundantAsync(FileChunk chunk, IEnumerable<FileChunk> allChunks)
+    public Task<bool> IsChunkRedundantAsync(FileChunk? chunk, IEnumerable<FileChunk> allChunks)
     {
         if (chunk == null)
             return Task.FromResult(false);
