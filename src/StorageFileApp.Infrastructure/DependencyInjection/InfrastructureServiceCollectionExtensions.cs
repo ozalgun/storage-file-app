@@ -1,8 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using StorageFileApp.Application.Interfaces;
+using StorageFileApp.Domain.Events;
 using StorageFileApp.Infrastructure.Data;
+using StorageFileApp.Infrastructure.Events;
+using StorageFileApp.Infrastructure.Messaging;
 using StorageFileApp.Infrastructure.Repositories;
 using StorageFileApp.Infrastructure.Services;
 
@@ -16,8 +20,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddDbContext<StorageFileDbContext>(options =>
         {
             var connectionString = configuration.GetConnectionString("DefaultConnection") 
-                ?? "Server=(localdb)\\mssqllocaldb;Database=StorageFileApp;Trusted_Connection=true;MultipleActiveResultSets=true";
-            options.UseSqlServer(connectionString);
+                ?? "Host=localhost;Port=5432;Database=StorageFileApp;Username=storageuser;Password=storagepass123;Include Error Detail=true;";
+            options.UseNpgsql(connectionString);
         });
 
         // Repositories
@@ -28,6 +32,15 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Storage Services
         services.AddScoped<IStorageService, FileSystemStorageService>();
+
+        // Domain Event Publisher
+        services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
+
+        // MassTransit with RabbitMQ
+        services.AddMassTransitWithRabbitMq(configuration);
+
+        // Seed Data
+        services.AddScoped<IHostedService, SeedDataService>();
 
         return services;
     }

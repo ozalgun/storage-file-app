@@ -1,85 +1,79 @@
 using StorageFileApp.Domain.Enums;
-using StorageFileApp.Domain.Services;
 
 namespace StorageFileApp.Application.DTOs;
 
 // Request DTOs
-public record CheckFileHealthRequest(
-    Guid FileId
+public record GetSystemHealthRequest(
+    bool IncludeStorageProviders = true,
+    bool IncludeDatabase = true,
+    bool IncludeMessageQueue = true
 );
 
-public record CheckChunkHealthRequest(
-    Guid FileId,
-    bool CheckAllChunks = true
+public record GetStorageProviderHealthRequest(
+    Guid? StorageProviderId = null,
+    bool IncludeAll = false
 );
 
-public record ReplicateChunksRequest(
-    Guid FileId,
-    int? ReplicationCount = null,
-    ReplicationPriority? Priority = null
+public record GetSystemStatisticsRequest(
+    DateTime? FromDate = null,
+    DateTime? ToDate = null
 );
 
 // Response DTOs
-public record FileHealthResult(
+public record SystemHealthResult(
     bool Success,
-    FileHealthInfo? HealthInfo = null,
+    bool IsHealthy,
+    string? ErrorMessage = null,
+    SystemHealthInfo? HealthInfo = null
+);
+
+public record StorageProviderHealthResult(
+    bool Success,
+    List<StorageProviderHealthInfo>? Providers = null,
     string? ErrorMessage = null
 );
 
-public record ChunkHealthResult(
+public record SystemStatisticsResult(
     bool Success,
-    List<ChunkHealthInfo>? ChunkHealthInfos = null,
-    string? ErrorMessage = null
-);
-
-public record ReplicationResult(
-    bool Success,
-    List<ReplicationInfo>? Replications = null,
-    string? ErrorMessage = null
-);
-
-public record HealthReportResult(
-    bool Success,
-    SystemHealthReport? Report = null,
+    SystemStatisticsInfo? Statistics = null,
     string? ErrorMessage = null
 );
 
 // Supporting DTOs
-public record FileHealthInfo(
-    Guid FileId,
-    bool IsHealthy,
-    int TotalChunks,
-    int HealthyChunks,
-    int UnhealthyChunks,
-    int ReplicatedChunks,
-    DateTime LastChecked
-);
-
-public record ChunkHealthInfo(
-    Guid ChunkId,
-    ChunkHealthStatus Status,
-    bool NeedsReplication,
-    DateTime LastChecked,
-    string? ErrorMessage = null
-);
-
-public record ReplicationInfo(
-    Guid ChunkId,
-    Guid SourceProviderId,
-    Guid TargetProviderId,
-    bool Success,
-    DateTime ReplicatedAt,
-    string? ErrorMessage = null
-);
-
-public record SystemHealthReport(
-    int TotalFiles,
-    int HealthyFiles,
-    int UnhealthyFiles,
-    int TotalChunks,
-    int HealthyChunks,
-    int UnhealthyChunks,
+public record SystemHealthInfo(
+    bool DatabaseHealthy,
+    bool MessageQueueHealthy,
+    bool StorageProvidersHealthy,
     int TotalStorageProviders,
-    int ActiveStorageProviders,
+    int HealthyStorageProviders,
+    int UnhealthyStorageProviders,
+    DateTime CheckedAt
+);
+
+public record StorageProviderHealthInfo(
+    Guid Id,
+    string Name,
+    StorageProviderType Type,
+    bool IsHealthy,
+    bool IsActive,
+    string? ErrorMessage = null,
+    long? AvailableSpace = null,
+    long? TotalSpace = null,
+    double? UsagePercentage = null,
+    DateTime CheckedAt = default
+);
+
+public record SystemStatisticsInfo(
+    int TotalFiles,
+    int TotalChunks,
+    long TotalStorageUsed,
+    int FilesByStatus_Pending,
+    int FilesByStatus_Processing,
+    int FilesByStatus_Available,
+    int FilesByStatus_Failed,
+    int ChunksByStatus_Pending,
+    int ChunksByStatus_Processing,
+    int ChunksByStatus_Stored,
+    int ChunksByStatus_Failed,
     DateTime GeneratedAt
 );

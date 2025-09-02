@@ -56,7 +56,8 @@ public record FileStatusResult(
     bool Success,
     FileStatus? Status = null,
     string? ErrorMessage = null,
-    DateTime? LastUpdated = null
+    DateTime? LastUpdated = null,
+    Dictionary<string, object>? AdditionalInfo = null
 );
 
 public record FileListResult(

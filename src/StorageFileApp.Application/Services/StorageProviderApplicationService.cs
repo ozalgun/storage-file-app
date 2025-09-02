@@ -101,9 +101,15 @@ public class StorageProviderApplicationService(ILogger<StorageProviderApplicatio
             
             // TODO: Implement storage provider health check
             var healthInfo = new StorageProviderHealthInfo(
-                request.Id, true, DateTime.UtcNow, "Healthy", null, null);
+                Id: request.Id,
+                Name: "Unknown",
+                Type: StorageProviderType.FileSystem,
+                IsHealthy: true,
+                IsActive: true,
+                CheckedAt: DateTime.UtcNow
+            );
             
-            return Task.FromResult(new StorageProviderHealthResult(true, HealthInfo: healthInfo));
+            return Task.FromResult(new StorageProviderHealthResult(true, Providers: [healthInfo]));
         }
         catch (Exception ex)
         {

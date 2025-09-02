@@ -27,10 +27,4 @@ public interface IStorageProviderUseCase
     Task<StorageProviderHealthResult> CheckStorageProviderHealthAsync(CheckStorageProviderHealthRequest request);
 }
 
-public interface IFileHealthUseCase
-{
-    Task<FileHealthResult> CheckFileHealthAsync(CheckFileHealthRequest request);
-    Task<ChunkHealthResult> CheckChunkHealthAsync(CheckChunkHealthRequest request);
-    Task<ReplicationResult> ReplicateChunksAsync(ReplicateChunksRequest request);
-    Task<HealthReportResult> GenerateHealthReportAsync();
-}
+

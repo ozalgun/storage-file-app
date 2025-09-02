@@ -93,43 +93,177 @@ public class FileChunkingApplicationService(
         }
     }
     
-    public Task<MergingResult> MergeChunksAsync(MergeChunksRequest request)
+    public async Task<MergingResult> MergeChunksAsync(MergeChunksRequest request)
     {
         try
         {
             _logger.LogInformation("Starting chunk merging process for file ID: {FileId}", request.FileId);
             
-            // TODO: Implement chunk merging logic
-            var result = new MergingResult(true, OutputPath: "placeholder_path");
+            var startTime = DateTime.UtcNow;
             
-            _logger.LogInformation("Chunk merging process completed for file ID: {FileId}", request.FileId);
+            // 1. Get file from repository
+            var file = await _fileRepository.GetByIdAsync(request.FileId);
+            if (file == null)
+            {
+                return new MergingResult(false, ErrorMessage: "File not found");
+            }
             
-            return Task.FromResult(result);
+            // 2. Get all chunks for the file
+            var chunks = await _chunkRepository.GetByFileIdAsync(request.FileId);
+            if (!chunks.Any())
+            {
+                return new MergingResult(false, ErrorMessage: "No chunks found for file");
+            }
+            
+            // 3. Check if all chunks are stored
+            var allStored = chunks.All(c => c.Status == ChunkStatus.Stored);
+            if (!allStored)
+            {
+                return new MergingResult(false, ErrorMessage: "Not all chunks are stored yet");
+            }
+            
+            // 4. Retrieve chunk data from storage
+            var chunkDataList = new List<byte[]>();
+            foreach (var chunk in chunks.OrderBy(c => c.Order))
+            {
+                var chunkData = await _storageService.RetrieveChunkAsync(chunk);
+                if (chunkData == null)
+                {
+                    return new MergingResult(false, ErrorMessage: $"Failed to retrieve chunk {chunk.Order}");
+                }
+                chunkDataList.Add(chunkData);
+            }
+            
+            // 5. Merge chunks using domain service
+            var mergedData = _mergingService.MergeChunks(chunkDataList);
+            
+            // 6. Validate integrity
+            var isValid = await _integrityService.ValidateFileIntegrityAsync(file, chunks, chunkDataList);
+            if (!isValid)
+            {
+                return new MergingResult(false, ErrorMessage: "File integrity validation failed");
+            }
+            
+            // 7. Save merged file
+            var outputPath = request.OutputPath ?? Path.Combine(Path.GetTempPath(), file.Name);
+            await File.WriteAllBytesAsync(outputPath, mergedData);
+            
+            // 8. Update file status
+            file.UpdateStatus(FileStatus.Available);
+            await _fileRepository.UpdateAsync(file);
+            await _unitOfWork.SaveChangesAsync();
+            
+            var processingTime = DateTime.UtcNow - startTime;
+            
+            _logger.LogInformation("Chunk merging process completed for file ID: {FileId} in {ProcessingTime}ms", 
+                request.FileId, processingTime.TotalMilliseconds);
+            
+            return new MergingResult(true, OutputPath: outputPath, ProcessingTime: processingTime);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while merging chunks for file ID: {FileId}", request.FileId);
-            return Task.FromResult(new MergingResult(false, ErrorMessage: ex.Message));
+            return new MergingResult(false, ErrorMessage: ex.Message);
         }
     }
     
-    public Task<ChunkValidationResult> ValidateChunksAsync(ValidateChunksRequest request)
+    public async Task<ChunkValidationResult> ValidateChunksAsync(ValidateChunksRequest request)
     {
         try
         {
             _logger.LogInformation("Starting chunk validation process for file ID: {FileId}", request.FileId);
             
-            // TODO: Implement chunk validation logic
-            var result = new ChunkValidationResult(true, AllChunksValid: true);
+            var startTime = DateTime.UtcNow;
             
-            _logger.LogInformation("Chunk validation process completed for file ID: {FileId}", request.FileId);
+            // 1. Get file from repository
+            var file = await _fileRepository.GetByIdAsync(request.FileId);
+            if (file == null)
+            {
+                return new ChunkValidationResult(false, ErrorMessage: "File not found");
+            }
             
-            return Task.FromResult(result);
+            // 2. Get all chunks for the file
+            var chunks = await _chunkRepository.GetByFileIdAsync(request.FileId);
+            if (!chunks.Any())
+            {
+                return new ChunkValidationResult(false, ErrorMessage: "No chunks found for file");
+            }
+            
+            // 3. Validate each chunk
+            var validationResults = new List<ChunkValidationInfo>();
+            var allValid = true;
+            
+            foreach (var chunk in chunks.OrderBy(c => c.Order))
+            {
+                try
+                {
+                    // Check if chunk exists in storage
+                    var exists = await _storageService.ChunkExistsAsync(chunk);
+                    if (!exists)
+                    {
+                        validationResults.Add(new ChunkValidationInfo(
+                            ChunkId: chunk.Id,
+                            Order: chunk.Order,
+                            IsValid: false,
+                            ErrorMessage: "Chunk not found in storage"
+                        ));
+                        allValid = false;
+                        continue;
+                    }
+                    
+                    // Retrieve chunk data for validation
+                    var chunkData = await _storageService.RetrieveChunkAsync(chunk);
+                    if (chunkData == null)
+                    {
+                        validationResults.Add(new ChunkValidationInfo(
+                            ChunkId: chunk.Id,
+                            Order: chunk.Order,
+                            IsValid: false,
+                            ErrorMessage: "Failed to retrieve chunk data for validation"
+                        ));
+                        allValid = false;
+                        continue;
+                    }
+                    
+                    // Validate chunk integrity
+                    var isValid = await _storageService.ValidateChunkIntegrityAsync(chunk, chunkData);
+                    validationResults.Add(new ChunkValidationInfo(
+                        ChunkId: chunk.Id,
+                        Order: chunk.Order,
+                        IsValid: isValid,
+                        ErrorMessage: isValid ? null : "Chunk integrity validation failed"
+                    ));
+                    
+                    if (!isValid)
+                    {
+                        allValid = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error validating chunk {ChunkId}", chunk.Id);
+                    validationResults.Add(new ChunkValidationInfo(
+                        ChunkId: chunk.Id,
+                        Order: chunk.Order,
+                        IsValid: false,
+                        ErrorMessage: ex.Message
+                    ));
+                    allValid = false;
+                }
+            }
+            
+            var processingTime = DateTime.UtcNow - startTime;
+            
+            _logger.LogInformation("Chunk validation process completed for file ID: {FileId} in {ProcessingTime}ms. Valid: {IsValid}", 
+                request.FileId, processingTime.TotalMilliseconds, allValid);
+            
+            return new ChunkValidationResult(true, AllChunksValid: allValid, 
+                ValidationResults: validationResults, ProcessingTime: processingTime);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while validating chunks for file ID: {FileId}", request.FileId);
-            return Task.FromResult(new ChunkValidationResult(false, ErrorMessage: ex.Message));
+            return new ChunkValidationResult(false, ErrorMessage: ex.Message);
         }
     }
 }

@@ -15,4 +15,5 @@ public interface IChunkRepository : IRepository<FileChunk>
     Task<bool> AreAllChunksStoredAsync(Guid fileId);
     Task<int> GetChunkCountByFileIdAsync(Guid fileId);
     Task<long> GetTotalSizeByFileIdAsync(Guid fileId);
+    Task<int> GetCountAsync();
 }

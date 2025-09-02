@@ -14,4 +14,5 @@ public interface IFileRepository : IRepository<FileEntity>
     Task<IEnumerable<FileEntity>> SearchAsync(string searchTerm);
     Task<(IEnumerable<FileEntity> Files, int TotalCount)> GetPagedAsync(
         int pageNumber, int pageSize, FileStatus? status = null, string? searchTerm = null);
+    Task<int> GetCountAsync();
 }

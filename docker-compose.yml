@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: storage-file-app-postgres
+    environment:
+      POSTGRES_DB: StorageFileApp
+      POSTGRES_USER: storageuser
+      POSTGRES_PASSWORD: storagepass123
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - storage-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storageuser -d StorageFileApp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: storage-file-app-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: storageuser
+      RABBITMQ_DEFAULT_PASS: storagepass123
+      RABBITMQ_DEFAULT_VHOST: storage-vhost
+    ports:
+      - "5672:5672"    # AMQP port
+      - "15672:15672"  # Management UI port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - storage-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: storage-file-app-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - storage-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  storage-network:
+    driver: bridge

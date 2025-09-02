@@ -7,6 +7,25 @@ namespace StorageFileApp.Domain.Services;
 
 public class FileMergingDomainService : IFileMergingDomainService
 {
+    public byte[] MergeChunks(IEnumerable<byte[]> chunkData)
+    {
+        var chunkDataList = chunkData.ToList();
+        if (!chunkDataList.Any())
+            return Array.Empty<byte>();
+            
+        var totalSize = chunkDataList.Sum(data => data.Length);
+        var mergedData = new byte[totalSize];
+        
+        var currentOffset = 0;
+        foreach (var data in chunkDataList)
+        {
+            Array.Copy(data, 0, mergedData, currentOffset, data.Length);
+            currentOffset += data.Length;
+        }
+        
+        return mergedData;
+    }
+    
     public async Task<byte[]> MergeChunksIntoFileAsync(IEnumerable<FileChunk> chunks, IEnumerable<byte[]> chunkData)
     {
         var chunksList = chunks.OrderBy(c => c.Order).ToList();

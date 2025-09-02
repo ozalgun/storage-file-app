@@ -64,4 +64,9 @@ public class ChunkRepository(StorageFileDbContext context) : BaseRepository<File
     {
         return await DbSet.Where(c => c.FileId == fileId).SumAsync(c => c.Size);
     }
+
+    public async Task<int> GetCountAsync()
+    {
+        return await DbSet.CountAsync();
+    }
 }

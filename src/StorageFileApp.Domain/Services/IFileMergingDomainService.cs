@@ -5,6 +5,7 @@ namespace StorageFileApp.Domain.Services;
 
 public interface IFileMergingDomainService
 {
+    byte[] MergeChunks(IEnumerable<byte[]> chunkData);
     Task<byte[]> MergeChunksIntoFileAsync(IEnumerable<FileChunk> chunks, IEnumerable<byte[]> chunkData);
     Task<bool> ValidateMergedFileAsync(byte[] mergedData, File file);
     Task<long> CalculateMergedFileSizeAsync(IEnumerable<FileChunk> chunks);

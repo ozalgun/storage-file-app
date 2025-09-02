@@ -66,4 +66,9 @@ public class FileRepository(StorageFileDbContext context) : BaseRepository<FileE
 
         return (files, totalCount);
     }
+
+    public async Task<int> GetCountAsync()
+    {
+        return await DbSet.CountAsync();
+    }
 }

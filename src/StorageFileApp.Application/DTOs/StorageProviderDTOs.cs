@@ -44,12 +44,6 @@ public record StorageProviderListResult(
     string? ErrorMessage = null
 );
 
-public record StorageProviderHealthResult(
-    bool Success,
-    StorageProviderHealthInfo? HealthInfo = null,
-    string? ErrorMessage = null
-);
-
 // Supporting DTOs
 public record StorageProviderInfo(
     Guid Id,
@@ -58,13 +52,4 @@ public record StorageProviderInfo(
     bool IsActive,
     DateTime CreatedAt,
     DateTime? UpdatedAt
-);
-
-public record StorageProviderHealthInfo(
-    Guid ProviderId,
-    bool IsHealthy,
-    DateTime LastChecked,
-    string? Status = null,
-    long? AvailableSpace = null,
-    int? ActiveConnections = null
 );

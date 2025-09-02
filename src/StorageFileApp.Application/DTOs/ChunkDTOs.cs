@@ -42,7 +42,8 @@ public record ChunkValidationResult(
     bool Success,
     List<ChunkValidationInfo>? ValidationResults = null,
     string? ErrorMessage = null,
-    bool? AllChunksValid = null
+    bool? AllChunksValid = null,
+    TimeSpan? ProcessingTime = null
 );
 
 // Supporting DTOs
@@ -57,6 +58,7 @@ public record ChunkInfo(
 
 public record ChunkValidationInfo(
     Guid ChunkId,
+    int Order,
     bool IsValid,
     string? ErrorMessage = null,
     string? Checksum = null
