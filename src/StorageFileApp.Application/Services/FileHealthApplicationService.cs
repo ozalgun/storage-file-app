@@ -4,15 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace StorageFileApp.Application.Services;
 
-public class FileHealthApplicationService : IFileHealthUseCase
+public class FileHealthApplicationService(ILogger<FileHealthApplicationService> logger) : IFileHealthUseCase
 {
-    private readonly ILogger<FileHealthApplicationService> _logger;
-    
-    public FileHealthApplicationService(ILogger<FileHealthApplicationService> logger)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-    
+    private readonly ILogger<FileHealthApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
     public Task<FileHealthResult> CheckFileHealthAsync(CheckFileHealthRequest request)
     {
         try

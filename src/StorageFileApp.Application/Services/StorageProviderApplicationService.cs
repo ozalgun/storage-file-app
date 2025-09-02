@@ -6,15 +6,11 @@ using Microsoft.Extensions.Logging;
 
 namespace StorageFileApp.Application.Services;
 
-public class StorageProviderApplicationService : IStorageProviderUseCase
+public class StorageProviderApplicationService(ILogger<StorageProviderApplicationService> logger)
+    : IStorageProviderUseCase
 {
-    private readonly ILogger<StorageProviderApplicationService> _logger;
-    
-    public StorageProviderApplicationService(ILogger<StorageProviderApplicationService> logger)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-    
+    private readonly ILogger<StorageProviderApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
     public Task<StorageProviderResult> RegisterStorageProviderAsync(RegisterStorageProviderRequest request)
     {
         try

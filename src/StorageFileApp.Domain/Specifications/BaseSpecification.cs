@@ -4,15 +4,9 @@ namespace StorageFileApp.Domain.Specifications;
 
 public abstract class BaseSpecification<T> : ISpecification<T>
 {
-    protected BaseSpecification()
-    {
-        Includes = new List<Expression<Func<T, object>>>();
-        IncludeStrings = new List<string>();
-    }
-
     public Expression<Func<T, bool>>? Criteria { get; private set; }
-    public List<Expression<Func<T, object>>> Includes { get; }
-    public List<string> IncludeStrings { get; }
+    public List<Expression<Func<T, object>>> Includes { get; } = new();
+    public List<string> IncludeStrings { get; } = new();
     public Expression<Func<T, object>>? OrderBy { get; private set; }
     public Expression<Func<T, object>>? OrderByDescending { get; private set; }
     public int Take { get; private set; }

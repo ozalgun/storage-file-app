@@ -9,43 +9,30 @@ using DomainChunkInfo = StorageFileApp.Domain.Services.ChunkInfo;
 
 namespace StorageFileApp.Application.Services;
 
-public class FileChunkingApplicationService : IFileChunkingUseCase
+public class FileChunkingApplicationService(
+    IFileRepository fileRepository,
+    IChunkRepository chunkRepository,
+    IStorageProviderRepository storageProviderRepository,
+    IStorageService storageService,
+    IFileChunkingDomainService chunkingService,
+    IFileMergingDomainService mergingService,
+    IFileIntegrityDomainService integrityService,
+    IChunkOptimizationDomainService optimizationService,
+    IUnitOfWork unitOfWork,
+    ILogger<FileChunkingApplicationService> logger)
+    : IFileChunkingUseCase
 {
-    private readonly IFileRepository _fileRepository;
-    private readonly IChunkRepository _chunkRepository;
-    private readonly IStorageProviderRepository _storageProviderRepository;
-    private readonly IStorageService _storageService;
-    private readonly IFileChunkingDomainService _chunkingService;
-    private readonly IFileMergingDomainService _mergingService;
-    private readonly IFileIntegrityDomainService _integrityService;
-    private readonly IChunkOptimizationDomainService _optimizationService;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<FileChunkingApplicationService> _logger;
-    
-    public FileChunkingApplicationService(
-        IFileRepository fileRepository,
-        IChunkRepository chunkRepository,
-        IStorageProviderRepository storageProviderRepository,
-        IStorageService storageService,
-        IFileChunkingDomainService chunkingService,
-        IFileMergingDomainService mergingService,
-        IFileIntegrityDomainService integrityService,
-        IChunkOptimizationDomainService optimizationService,
-        IUnitOfWork unitOfWork,
-        ILogger<FileChunkingApplicationService> logger)
-    {
-        _fileRepository = fileRepository ?? throw new ArgumentNullException(nameof(fileRepository));
-        _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
-        _storageProviderRepository = storageProviderRepository ?? throw new ArgumentNullException(nameof(storageProviderRepository));
-        _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-        _chunkingService = chunkingService ?? throw new ArgumentNullException(nameof(chunkingService));
-        _mergingService = mergingService ?? throw new ArgumentNullException(nameof(mergingService));
-        _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
-        _optimizationService = optimizationService ?? throw new ArgumentNullException(nameof(optimizationService));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-    
+    private readonly IFileRepository _fileRepository = fileRepository ?? throw new ArgumentNullException(nameof(fileRepository));
+    private readonly IChunkRepository _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
+    private readonly IStorageProviderRepository _storageProviderRepository = storageProviderRepository ?? throw new ArgumentNullException(nameof(storageProviderRepository));
+    private readonly IStorageService _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+    private readonly IFileChunkingDomainService _chunkingService = chunkingService ?? throw new ArgumentNullException(nameof(chunkingService));
+    private readonly IFileMergingDomainService _mergingService = mergingService ?? throw new ArgumentNullException(nameof(mergingService));
+    private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
+    private readonly IChunkOptimizationDomainService _optimizationService = optimizationService ?? throw new ArgumentNullException(nameof(optimizationService));
+    private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+    private readonly ILogger<FileChunkingApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
     public async Task<ChunkingResult> ChunkFileAsync(ChunkFileRequest request)
     {
         try

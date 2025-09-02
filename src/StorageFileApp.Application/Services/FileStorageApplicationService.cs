@@ -11,43 +11,30 @@ using DomainFileMetadata = StorageFileApp.Domain.ValueObjects.FileMetadata;
 
 namespace StorageFileApp.Application.Services;
 
-public class FileStorageApplicationService : IFileStorageUseCase
+public class FileStorageApplicationService(
+    IFileRepository fileRepository,
+    IChunkRepository chunkRepository,
+    IStorageProviderRepository storageProviderRepository,
+    IStorageService storageService,
+    IFileChunkingDomainService chunkingService,
+    IFileIntegrityDomainService integrityService,
+    IFileValidationDomainService validationService,
+    IStorageStrategyDomainService strategyService,
+    IUnitOfWork unitOfWork,
+    ILogger<FileStorageApplicationService> logger)
+    : IFileStorageUseCase
 {
-    private readonly IFileRepository _fileRepository;
-    private readonly IChunkRepository _chunkRepository;
-    private readonly IStorageProviderRepository _storageProviderRepository;
-    private readonly IStorageService _storageService;
-    private readonly IFileChunkingDomainService _chunkingService;
-    private readonly IFileIntegrityDomainService _integrityService;
-    private readonly IFileValidationDomainService _validationService;
-    private readonly IStorageStrategyDomainService _strategyService;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<FileStorageApplicationService> _logger;
-    
-    public FileStorageApplicationService(
-        IFileRepository fileRepository,
-        IChunkRepository chunkRepository,
-        IStorageProviderRepository storageProviderRepository,
-        IStorageService storageService,
-        IFileChunkingDomainService chunkingService,
-        IFileIntegrityDomainService integrityService,
-        IFileValidationDomainService validationService,
-        IStorageStrategyDomainService strategyService,
-        IUnitOfWork unitOfWork,
-        ILogger<FileStorageApplicationService> logger)
-    {
-        _fileRepository = fileRepository ?? throw new ArgumentNullException(nameof(fileRepository));
-        _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
-        _storageProviderRepository = storageProviderRepository ?? throw new ArgumentNullException(nameof(storageProviderRepository));
-        _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-        _chunkingService = chunkingService ?? throw new ArgumentNullException(nameof(chunkingService));
-        _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
-        _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
-        _strategyService = strategyService ?? throw new ArgumentNullException(nameof(strategyService));
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-    
+    private readonly IFileRepository _fileRepository = fileRepository ?? throw new ArgumentNullException(nameof(fileRepository));
+    private readonly IChunkRepository _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
+    private readonly IStorageProviderRepository _storageProviderRepository = storageProviderRepository ?? throw new ArgumentNullException(nameof(storageProviderRepository));
+    private readonly IStorageService _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+    private readonly IFileChunkingDomainService _chunkingService = chunkingService ?? throw new ArgumentNullException(nameof(chunkingService));
+    private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
+    private readonly IFileValidationDomainService _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
+    private readonly IStorageStrategyDomainService _strategyService = strategyService ?? throw new ArgumentNullException(nameof(strategyService));
+    private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+    private readonly ILogger<FileStorageApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
     public async Task<FileStorageResult> StoreFileAsync(StoreFileRequest request)
     {
         try
