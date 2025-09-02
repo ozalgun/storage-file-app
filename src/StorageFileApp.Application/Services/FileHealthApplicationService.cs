@@ -11,6 +11,7 @@ public class FileHealthApplicationService(
     IChunkRepository chunkRepository,
     IStorageProviderRepository storageProviderRepository,
     IStorageService storageService,
+    IMessageQueueHealthService messageQueueHealthService,
     ILogger<FileHealthApplicationService> logger)
     : IFileHealthUseCase
 {
@@ -18,6 +19,7 @@ public class FileHealthApplicationService(
     private readonly IChunkRepository _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
     private readonly IStorageProviderRepository _storageProviderRepository = storageProviderRepository ?? throw new ArgumentNullException(nameof(storageProviderRepository));
     private readonly IStorageService _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+    private readonly IMessageQueueHealthService _messageQueueHealthService = messageQueueHealthService ?? throw new ArgumentNullException(nameof(messageQueueHealthService));
     private readonly ILogger<FileHealthApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public async Task<SystemHealthResult> GetSystemHealthAsync(GetSystemHealthRequest request)
@@ -26,9 +28,16 @@ public class FileHealthApplicationService(
         {
             _logger.LogInformation("Checking system health...");
 
+            // Check message queue health
+            var messageQueueHealthy = true;
+            if (request.IncludeMessageQueue)
+            {
+                messageQueueHealthy = await _messageQueueHealthService.IsHealthyAsync();
+            }
+
             var healthInfo = new SystemHealthInfo(
                 DatabaseHealthy: true, // Assume healthy if we can query
-                MessageQueueHealthy: true, // TODO: Implement actual RabbitMQ health check
+                MessageQueueHealthy: messageQueueHealthy,
                 StorageProvidersHealthy: true,
                 TotalStorageProviders: 0,
                 HealthyStorageProviders: 0,

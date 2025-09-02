@@ -29,4 +29,16 @@ public class StorageProvider
         IsActive = isActive;
         UpdatedAt = DateTime.UtcNow;
     }
+    
+    public void UpdateName(string name)
+    {
+        Name = name ?? throw new ArgumentNullException(nameof(name));
+        UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public void UpdateConnectionString(string connectionString)
+    {
+        ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        UpdatedAt = DateTime.UtcNow;
+    }
 }

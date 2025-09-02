@@ -3,52 +3,47 @@ using System;
 namespace StorageFileApp.Application.Contracts;
 
 // File Events
-public record FileCreatedEvent
-{
-    public Guid FileId { get; init; }
-    public string FileName { get; init; } = string.Empty;
-    public long FileSize { get; init; }
-    public string ContentType { get; init; } = string.Empty;
-    public DateTime CreatedAt { get; init; }
-    public string Checksum { get; init; } = string.Empty;
-}
+public record FileCreatedEvent(
+    Guid FileId,
+    string FileName,
+    long FileSize,
+    DateTime CreatedAt,
+    string ContentType
+);
 
-public record FileStatusChangedEvent
-{
-    public Guid FileId { get; init; }
-    public string FileName { get; init; } = string.Empty;
-    public string OldStatus { get; init; } = string.Empty;
-    public string NewStatus { get; init; } = string.Empty;
-    public DateTime ChangedAt { get; init; }
-}
+public record FileStatusChangedEvent(
+    Guid FileId,
+    string OldStatus,
+    string NewStatus,
+    DateTime ChangedAt,
+    string? Reason = null
+);
 
-public record FileDeletedEvent
-{
-    public Guid FileId { get; init; }
-    public string FileName { get; init; } = string.Empty;
-    public DateTime DeletedAt { get; init; }
-}
+public record FileDeletedEvent(
+    Guid FileId,
+    string FileName,
+    DateTime DeletedAt,
+    int ChunkCount
+);
 
 // Chunk Events
-public record ChunkCreatedEvent
-{
-    public Guid ChunkId { get; init; }
-    public Guid FileId { get; init; }
-    public int Order { get; init; }
-    public long Size { get; init; }
-    public string Checksum { get; init; } = string.Empty;
-    public Guid StorageProviderId { get; init; }
-    public DateTime CreatedAt { get; init; }
-}
+public record ChunkCreatedEvent(
+    Guid ChunkId,
+    Guid FileId,
+    int Order,
+    long Size,
+    Guid StorageProviderId,
+    DateTime CreatedAt
+);
 
-public record ChunkStatusChangedEvent
-{
-    public Guid ChunkId { get; init; }
-    public Guid FileId { get; init; }
-    public string OldStatus { get; init; } = string.Empty;
-    public string NewStatus { get; init; } = string.Empty;
-    public DateTime ChangedAt { get; init; }
-}
+public record ChunkStatusChangedEvent(
+    Guid ChunkId,
+    Guid FileId,
+    string OldStatus,
+    string NewStatus,
+    DateTime ChangedAt,
+    string? Reason = null
+);
 
 public record ChunkStoredEvent
 {

@@ -175,8 +175,48 @@ public class HealthMonitoringService(
         {
             var fileId = await _menuService.GetUserInputAsync("Enter file ID to check chunk health (or press Enter for all): ");
             
-            // TODO: Implement chunk health status
-            await _menuService.DisplayMessageAsync("Chunk health status functionality will be implemented here.");
+            if (string.IsNullOrWhiteSpace(fileId))
+            {
+                // Show overall chunk health statistics
+                await _menuService.DisplayMessageAsync("📊 Overall Chunk Health Statistics:", false);
+                
+                var statsRequest = new Application.DTOs.GetSystemStatisticsRequest();
+                var statsResult = await _fileHealthUseCase.GetSystemStatisticsAsync(statsRequest);
+                
+                if (statsResult.Success && statsResult.Statistics != null)
+                {
+                    var stats = statsResult.Statistics;
+                    Console.WriteLine($"\n🧩 Chunk Status Distribution:");
+                    Console.WriteLine($"  Pending: {stats.ChunksByStatus_Pending:N0}");
+                    Console.WriteLine($"  Processing: {stats.ChunksByStatus_Processing:N0}");
+                    Console.WriteLine($"  Stored: {stats.ChunksByStatus_Stored:N0}");
+                    Console.WriteLine($"  Failed: {stats.ChunksByStatus_Failed:N0}");
+                    
+                    var totalChunks = stats.ChunksByStatus_Pending + stats.ChunksByStatus_Processing + 
+                                    stats.ChunksByStatus_Stored + stats.ChunksByStatus_Failed;
+                    var healthyPercentage = totalChunks > 0 ? (stats.ChunksByStatus_Stored * 100.0 / totalChunks) : 0;
+                    
+                    Console.WriteLine($"\n✅ Chunk Health: {healthyPercentage:F1}% healthy");
+                }
+            }
+            else
+            {
+                // Check specific file's chunk health
+                if (!Guid.TryParse(fileId, out var fileGuid))
+                {
+                    await _menuService.DisplayMessageAsync("Invalid file ID format.", true);
+                    await _menuService.WaitForUserInputAsync();
+                    return;
+                }
+                
+                Console.WriteLine($"\n🔍 Checking chunk health for file: {fileGuid}");
+                
+                // This would need to be implemented in the health use case
+                // For now, we'll show a placeholder
+                await _menuService.DisplayMessageAsync("Detailed chunk health validation would be performed here.", false);
+                await _menuService.DisplayMessageAsync("This includes checksum validation, storage provider availability, and data integrity checks.", false);
+            }
+            
             await _menuService.WaitForUserInputAsync();
         }
         catch (Exception ex)

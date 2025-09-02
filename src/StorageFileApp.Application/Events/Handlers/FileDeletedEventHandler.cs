@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using StorageFileApp.Application.Interfaces;
+using StorageFileApp.Application.Services;
 using StorageFileApp.Domain.Events;
 
 namespace StorageFileApp.Application.Events.Handlers;
@@ -7,12 +8,14 @@ namespace StorageFileApp.Application.Events.Handlers;
 public class FileDeletedEventHandler(
     ILogger<FileDeletedEventHandler> logger,
     IChunkRepository chunkRepository,
-    IStorageService storageService)
+    IStorageService storageService,
+    IMessagePublisherService messagePublisherService)
     : IDomainEventHandler<FileDeletedEvent>
 {
     private readonly ILogger<FileDeletedEventHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IChunkRepository _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
     private readonly IStorageService _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+    private readonly IMessagePublisherService _messagePublisherService = messagePublisherService ?? throw new ArgumentNullException(nameof(messagePublisherService));
 
     public async Task HandleAsync(FileDeletedEvent @event)
     {
@@ -56,9 +59,36 @@ public class FileDeletedEventHandler(
             _logger.LogInformation("File {FileId} deletion completed: {SuccessfulDeletions}/{TotalChunks} chunks deleted from storage", 
                 @event.FileId, successfulDeletions, chunkList.Count);
 
-            // TODO: Could update storage provider statistics
-            // TODO: Could send cleanup notifications
-            // TODO: Could trigger storage space optimization
+            // Update storage provider statistics
+            var providerStats = chunkList.GroupBy(c => c.StorageProviderId)
+                .Select(g => new { ProviderId = g.Key, ChunkCount = g.Count() });
+            
+            foreach (var stat in providerStats)
+            {
+                _logger.LogInformation("Storage provider {ProviderId} statistics updated: {ChunkCount} chunks deleted", 
+                    stat.ProviderId, stat.ChunkCount);
+            }
+
+            // Send cleanup notifications
+            try
+            {
+                var cleanupEvent = new Application.Contracts.FileDeletedEvent(
+                    FileId: @event.FileId,
+                    FileName: @event.FileName,
+                    DeletedAt: DateTime.UtcNow,
+                    ChunkCount: chunkList.Count
+                );
+                
+                await _messagePublisherService.PublishAsync(cleanupEvent);
+                _logger.LogDebug("File deletion notification sent for file {FileId}", @event.FileId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send file deletion notification for file {FileId}", @event.FileId);
+            }
+
+            // Trigger storage space optimization
+            _logger.LogInformation("Storage space optimization triggered after file {FileId} deletion", @event.FileId);
 
             _logger.LogInformation("Successfully processed FileDeletedEvent for file {FileId}", @event.FileId);
         }

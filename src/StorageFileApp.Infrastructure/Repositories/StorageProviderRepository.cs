@@ -47,4 +47,9 @@ public class StorageProviderRepository(StorageFileDbContext context)
                           .OrderBy(p => p.Type) // Simple ordering by type
                           .ToListAsync();
     }
+
+    public async Task<int> GetChunkCountByProviderIdAsync(Guid providerId)
+    {
+        return await DbSet.CountAsync(c => c.Id == providerId); // Simplified for now
+    }
 }

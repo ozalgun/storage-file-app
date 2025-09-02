@@ -12,4 +12,5 @@ public interface IStorageProviderRepository : IRepository<StorageProvider>
     Task<bool> IsProviderAvailableAsync(Guid providerId);
     Task<int> GetActiveProviderCountAsync();
     Task<IEnumerable<StorageProvider>> GetProvidersByLoadAsync();
+    Task<int> GetChunkCountByProviderIdAsync(Guid providerId);
 }

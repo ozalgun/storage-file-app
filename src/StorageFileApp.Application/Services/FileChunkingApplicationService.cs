@@ -266,4 +266,79 @@ public class FileChunkingApplicationService(
             return new ChunkValidationResult(false, ErrorMessage: ex.Message);
         }
     }
+    
+    public async Task<FileStatusResult> GetFileStatusAsync(GetFileStatusRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("Getting file status for file ID: {FileId}", request.FileId);
+            
+            // 1. Get file from repository
+            var file = await _fileRepository.GetByIdAsync(request.FileId);
+            if (file == null)
+            {
+                return new FileStatusResult(false, ErrorMessage: "File not found");
+            }
+            
+            // 2. Get chunks for the file
+            var chunks = await _chunkRepository.GetByFileIdAsync(request.FileId);
+            
+            // 3. Determine overall file status based on chunks
+            var fileStatus = DetermineFileStatus(file, chunks);
+            
+            // 4. Get additional status information
+            var chunkCount = chunks.Count();
+            var storedChunkCount = chunks.Count((c) => c.Status == ChunkStatus.Stored);
+            var totalSize = chunks.Sum((c) => c.Size);
+            
+            var additionalInfo = new Dictionary<string, object>
+            {
+                ["ChunkCount"] = chunkCount,
+                ["StoredChunkCount"] = storedChunkCount,
+                ["TotalSize"] = totalSize,
+                ["CreatedAt"] = file.CreatedAt,
+                ["LastModifiedAt"] = file.UpdatedAt ?? file.CreatedAt
+            };
+            
+            var result = new FileStatusResult(true, Status: fileStatus, AdditionalInfo: additionalInfo);
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while getting file status for ID: {FileId}", request.FileId);
+            return new FileStatusResult(false, ErrorMessage: ex.Message);
+        }
+    }
+    
+    private static FileStatus DetermineFileStatus(Domain.Entities.FileEntity.File file, IEnumerable<FileChunk> chunks)
+    {
+        var chunkList = chunks.ToList();
+        
+        if (!chunkList.Any())
+        {
+            return FileStatus.Pending;
+        }
+        
+        var allStored = chunkList.All(c => c.Status == ChunkStatus.Stored);
+        var anyFailed = chunkList.Any(c => c.Status == ChunkStatus.Failed);
+        var anyProcessing = chunkList.Any(c => c.Status == ChunkStatus.Processing);
+        
+        if (allStored)
+        {
+            return FileStatus.Available;
+        }
+        
+        if (anyFailed)
+        {
+            return FileStatus.Failed;
+        }
+        
+        if (anyProcessing)
+        {
+            return FileStatus.Processing;
+        }
+        
+        return FileStatus.Pending;
+    }
 }

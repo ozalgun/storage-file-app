@@ -40,8 +40,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddMassTransitWithRabbitMq(configuration);
 
         // Seed Data
-        services.AddScoped<IHostedService, SeedDataService>();
-
+                services.AddScoped<IHostedService, SeedDataService>();
+        services.AddScoped<IMessageQueueHealthService, MessageQueueHealthService>();
+        
         return services;
     }
 }

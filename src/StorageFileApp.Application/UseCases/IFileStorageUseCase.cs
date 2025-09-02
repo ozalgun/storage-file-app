@@ -4,7 +4,7 @@ namespace StorageFileApp.Application.UseCases;
 
 public interface IFileStorageUseCase
 {
-    Task<FileStorageResult> StoreFileAsync(StoreFileRequest request);
+    Task<FileStorageResult> StoreFileAsync(StoreFileRequest request, byte[] fileBytes);
     Task<FileRetrievalResult> RetrieveFileAsync(RetrieveFileRequest request);
     Task<FileDeletionResult> DeleteFileAsync(DeleteFileRequest request);
     Task<FileStatusResult> GetFileStatusAsync(GetFileStatusRequest request);
@@ -16,6 +16,7 @@ public interface IFileChunkingUseCase
     Task<ChunkingResult> ChunkFileAsync(ChunkFileRequest request);
     Task<MergingResult> MergeChunksAsync(MergeChunksRequest request);
     Task<ChunkValidationResult> ValidateChunksAsync(ValidateChunksRequest request);
+    Task<FileStatusResult> GetFileStatusAsync(GetFileStatusRequest request);
 }
 
 public interface IStorageProviderUseCase

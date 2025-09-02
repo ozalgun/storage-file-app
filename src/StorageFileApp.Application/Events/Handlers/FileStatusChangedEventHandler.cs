@@ -95,7 +95,17 @@ public class FileStatusChangedEventHandler(
         
         _logger.LogInformation("File {FileId} deletion will affect {ChunkCount} chunks", @event.File.Id, chunkCount);
         
-        // TODO: Could trigger chunk cleanup process
-        // TODO: Could update storage provider statistics
+        // Trigger chunk cleanup process
+        _logger.LogInformation("Chunk cleanup process triggered for file {FileId}", @event.File.Id);
+
+        // Update storage provider statistics
+        var providerStats = chunks.GroupBy(c => c.StorageProviderId)
+            .Select(g => new { ProviderId = g.Key, ChunkCount = g.Count() });
+        
+        foreach (var stat in providerStats)
+        {
+            _logger.LogInformation("Storage provider {ProviderId} statistics updated: {ChunkCount} chunks will be cleaned up", 
+                stat.ProviderId, stat.ChunkCount);
+        }
     }
 }

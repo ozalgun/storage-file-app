@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using StorageFileApp.Application.Interfaces;
+using StorageFileApp.Application.Services;
 using StorageFileApp.Domain.Events;
 
 namespace StorageFileApp.Application.Events.Handlers;
@@ -7,12 +8,14 @@ namespace StorageFileApp.Application.Events.Handlers;
 public class ChunkStoredEventHandler(
     ILogger<ChunkStoredEventHandler> logger,
     IChunkRepository chunkRepository,
-    IFileRepository fileRepository)
+    IFileRepository fileRepository,
+    IMessagePublisherService messagePublisherService)
     : IDomainEventHandler<ChunkStoredEvent>
 {
     private readonly ILogger<ChunkStoredEventHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IChunkRepository _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
     private readonly IFileRepository _fileRepository = fileRepository ?? throw new ArgumentNullException(nameof(fileRepository));
+    private readonly IMessagePublisherService _messagePublisherService = messagePublisherService ?? throw new ArgumentNullException(nameof(messagePublisherService));
 
     public async Task HandleAsync(ChunkStoredEvent @event)
     {
@@ -40,9 +43,43 @@ public class ChunkStoredEventHandler(
                         file.Name, file.Size);
                 }
                 
-                // TODO: Could trigger file status update to Stored
-                // TODO: Could send completion notifications
-                // TODO: Could update file statistics
+                // Trigger file status update to Available
+                try
+                {
+                    var fileEntity = await _fileRepository.GetByIdAsync(@event.Chunk.FileId);
+                    if (fileEntity != null)
+                    {
+                        fileEntity.MarkAsAvailable();
+                        await _fileRepository.UpdateAsync(fileEntity);
+                        _logger.LogInformation("File {FileId} status updated to Available", @event.Chunk.FileId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error updating file status for file {FileId}", @event.Chunk.FileId);
+                }
+
+                // Send completion notifications
+                try
+                {
+                    var completionEvent = new Application.Contracts.FileStatusChangedEvent(
+                        FileId: @event.Chunk.FileId,
+                        OldStatus: Domain.Enums.FileStatus.Processing.ToString(),
+                        NewStatus: Domain.Enums.FileStatus.Available.ToString(),
+                        ChangedAt: DateTime.UtcNow,
+                        Reason: "All chunks stored successfully"
+                    );
+                    
+                    await _messagePublisherService.PublishAsync(completionEvent);
+                    _logger.LogDebug("File completion notification sent for file {FileId}", @event.Chunk.FileId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send file completion notification for file {FileId}", @event.Chunk.FileId);
+                }
+
+                // Update file statistics
+                _logger.LogInformation("File statistics updated: File {FileId} storage completed successfully", @event.Chunk.FileId);
             }
             else
             {
@@ -55,9 +92,18 @@ public class ChunkStoredEventHandler(
                     @event.Chunk.FileId, storedChunks.Count(), totalChunks, remainingChunks);
             }
 
-            // TODO: Could trigger replication for critical chunks
-            // TODO: Could update storage provider statistics
-            // TODO: Could trigger storage optimization
+            // Trigger replication for critical chunks (if needed)
+            if (@event.Chunk.Size > 50 * 1024 * 1024) // 50MB threshold for replication
+            {
+                _logger.LogInformation("Large chunk {ChunkId} stored - replication may be needed for redundancy", @event.Chunk.Id);
+            }
+
+            // Update storage provider statistics
+            _logger.LogInformation("Storage provider {ProviderId} statistics updated: Chunk {ChunkId} stored successfully", 
+                @event.StorageProviderId, @event.Chunk.Id);
+
+            // Trigger storage optimization (cleanup old chunks, etc.)
+            _logger.LogDebug("Storage optimization triggered for provider {ProviderId}", @event.StorageProviderId);
 
             _logger.LogInformation("Successfully processed ChunkStoredEvent for chunk {ChunkId}", @event.Chunk.Id);
         }

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using StorageFileApp.Application.UseCases;
 using StorageFileApp.ConsoleApp.Services;
 using System;
+using StorageFileApp.Application.DTOs;
 
 namespace StorageFileApp.ConsoleApp.Services;
 
@@ -78,8 +79,37 @@ public class FileOperationService(
             
             if (await _menuService.ConfirmOperationAsync("store this file"))
             {
-                // TODO: Implement file storage
-                await _menuService.DisplayMessageAsync("File storage functionality will be implemented here.");
+                Console.WriteLine("\nStoring file...");
+                
+                var fileBytes = await File.ReadAllBytesAsync(filePath);
+                var contentType = GetContentType(fileName);
+                
+                var request = new StoreFileRequest(
+                    FileName: fileName,
+                    FileSize: fileSize,
+                    ContentType: contentType,
+                    Description: $"Stored from: {filePath}"
+                );
+                
+                var result = await _fileStorageUseCase.StoreFileAsync(request, fileBytes);
+                
+                if (result.Success)
+                {
+                    await _menuService.DisplayMessageAsync($"✅ File stored successfully! File ID: {result.FileId}", false);
+                    if (result.Warnings?.Any() == true)
+                    {
+                        Console.WriteLine("\n⚠️ Warnings:");
+                        foreach (var warning in result.Warnings)
+                        {
+                            Console.WriteLine($"  - {warning}");
+                        }
+                    }
+                }
+                else
+                {
+                    await _menuService.DisplayMessageAsync($"❌ Failed to store file: {result.ErrorMessage}", true);
+                }
+                
                 await _menuService.WaitForUserInputAsync();
             }
         }
@@ -113,8 +143,47 @@ public class FileOperationService(
 
             if (await _menuService.ConfirmOperationAsync("retrieve this file"))
             {
-                // TODO: Implement file retrieval
-                await _menuService.DisplayMessageAsync("File retrieval functionality will be implemented here.");
+                Console.WriteLine("\nRetrieving file...");
+                
+                if (!Guid.TryParse(fileId, out var fileGuid))
+                {
+                    await _menuService.DisplayMessageAsync("Invalid file ID format.", true);
+                    await _menuService.WaitForUserInputAsync();
+                    return;
+                }
+                
+                var request = new RetrieveFileRequest(
+                    FileId: fileGuid,
+                    OutputPath: outputPath
+                );
+                
+                var result = await _fileStorageUseCase.RetrieveFileAsync(request);
+                
+                if (result.Success)
+                {
+                    await _menuService.DisplayMessageAsync($"✅ File retrieved successfully! Saved to: {result.FilePath}", false);
+                    
+                    if (result.FileMetadata != null)
+                    {
+                        Console.WriteLine("\n📄 File Metadata:");
+                        Console.WriteLine($"  Content Type: {result.FileMetadata.ContentType}");
+                        if (!string.IsNullOrEmpty(result.FileMetadata.Description))
+                            Console.WriteLine($"  Description: {result.FileMetadata.Description}");
+                        if (result.FileMetadata.CustomProperties?.Any() == true)
+                        {
+                            Console.WriteLine("  Custom Properties:");
+                            foreach (var prop in result.FileMetadata.CustomProperties)
+                            {
+                                Console.WriteLine($"    {prop.Key}: {prop.Value}");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    await _menuService.DisplayMessageAsync($"❌ Failed to retrieve file: {result.ErrorMessage}", true);
+                }
+                
                 await _menuService.WaitForUserInputAsync();
             }
         }
@@ -147,8 +216,31 @@ public class FileOperationService(
 
             if (await _menuService.ConfirmOperationAsync("delete this file"))
             {
-                // TODO: Implement file deletion
-                await _menuService.DisplayMessageAsync("File deletion functionality will be implemented here.");
+                Console.WriteLine("\nDeleting file...");
+                
+                if (!Guid.TryParse(fileId, out var fileGuid))
+                {
+                    await _menuService.DisplayMessageAsync("Invalid file ID format.", true);
+                    await _menuService.WaitForUserInputAsync();
+                    return;
+                }
+                
+                var request = new DeleteFileRequest(
+                    FileId: fileGuid,
+                    ForceDelete: false
+                );
+                
+                var result = await _fileStorageUseCase.DeleteFileAsync(request);
+                
+                if (result.Success)
+                {
+                    await _menuService.DisplayMessageAsync("✅ File deleted successfully!", false);
+                }
+                else
+                {
+                    await _menuService.DisplayMessageAsync($"❌ Failed to delete file: {result.ErrorMessage}", true);
+                }
+                
                 await _menuService.WaitForUserInputAsync();
             }
         }
@@ -170,9 +262,84 @@ public class FileOperationService(
         
         try
         {
-            // TODO: Implement file listing
-            await _menuService.DisplayMessageAsync("File listing functionality will be implemented here.");
-            await _menuService.WaitForUserInputAsync();
+            var pageNumber = 1;
+            var pageSize = 20;
+            
+            while (true)
+            {
+                Console.WriteLine($"\n📋 Files (Page {pageNumber}, {pageSize} per page):");
+                Console.WriteLine("═══════════════════════════════════════════════════════════════");
+                
+                var request = new ListFilesRequest(
+                    PageNumber: pageNumber,
+                    PageSize: pageSize
+                );
+                
+                var result = await _fileStorageUseCase.ListFilesAsync(request);
+                
+                if (result.Success && result.Files?.Any() == true)
+                {
+                    Console.WriteLine($"{"ID",-36} {"Name",-30} {"Size",-12} {"Status",-12} {"Created",-20}");
+                    Console.WriteLine(new string('-', 110));
+                    
+                    foreach (var file in result.Files)
+                    {
+                        var sizeFormatted = FormatFileSize(file.Size);
+                        var statusFormatted = file.Status.ToString();
+                        var createdFormatted = file.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                        
+                        Console.WriteLine($"{file.Id,-36} {TruncateString(file.Name, 30),-30} {sizeFormatted,-12} {statusFormatted,-12} {createdFormatted,-20}");
+                    }
+                    
+                    Console.WriteLine(new string('-', 110));
+                    Console.WriteLine($"Total: {result.TotalCount} files");
+                    
+                    if (result.TotalCount > pageSize)
+                    {
+                        Console.WriteLine("\nNavigation:");
+                        Console.WriteLine("  [N] Next page  [P] Previous page  [S] Change page size  [Q] Quit");
+                        
+                        var navChoice = await _menuService.GetUserInputAsync("Choice: ").ConfigureAwait(false);
+                        
+                        switch (navChoice?.ToUpper())
+                        {
+                            case "N":
+                                if (pageNumber * pageSize < result.TotalCount)
+                                    pageNumber++;
+                                break;
+                            case "P":
+                                if (pageNumber > 1)
+                                    pageNumber--;
+                                break;
+                            case "S":
+                                var newPageSize = await _menuService.GetUserInputAsync("Enter page size (5-100): ");
+                                if (int.TryParse(newPageSize, out var size) && size >= 5 && size <= 100)
+                                {
+                                    pageSize = size;
+                                    pageNumber = 1;
+                                }
+                                break;
+                            case "Q":
+                                return;
+                            default:
+                                await _menuService.DisplayMessageAsync("Invalid choice.", true);
+                                await _menuService.WaitForUserInputAsync();
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        await _menuService.WaitForUserInputAsync();
+                        return;
+                    }
+                }
+                else
+                {
+                    await _menuService.DisplayMessageAsync("No files found.", false);
+                    await _menuService.WaitForUserInputAsync();
+                    return;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -201,8 +368,40 @@ public class FileOperationService(
                 return;
             }
 
-            // TODO: Implement file search
-            await _menuService.DisplayMessageAsync("File search functionality will be implemented here.");
+            Console.WriteLine("\n🔍 Searching files...");
+            
+            var request = new ListFilesRequest(
+                PageNumber: 1,
+                PageSize: 50,
+                SearchTerm: searchTerm
+            );
+            
+            var result = await _fileStorageUseCase.ListFilesAsync(request);
+            
+            if (result.Success && result.Files?.Any() == true)
+            {
+                Console.WriteLine($"\n📋 Search Results for '{searchTerm}' ({result.Files.Count} files found):");
+                Console.WriteLine("═══════════════════════════════════════════════════════════════");
+                Console.WriteLine($"{"ID",-36} {"Name",-30} {"Size",-12} {"Status",-12} {"Created",-20}");
+                Console.WriteLine(new string('-', 110));
+                
+                foreach (var file in result.Files)
+                {
+                    var sizeFormatted = FormatFileSize(file.Size);
+                    var statusFormatted = file.Status.ToString();
+                    var createdFormatted = file.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                    
+                    Console.WriteLine($"{file.Id,-36} {TruncateString(file.Name, 30),-30} {sizeFormatted,-12} {statusFormatted,-12} {createdFormatted,-20}");
+                }
+                
+                Console.WriteLine(new string('-', 110));
+                Console.WriteLine($"Total: {result.TotalCount} files found");
+            }
+            else
+            {
+                await _menuService.DisplayMessageAsync($"No files found matching '{searchTerm}'.", false);
+            }
+            
             await _menuService.WaitForUserInputAsync();
         }
         catch (Exception ex)
@@ -211,5 +410,49 @@ public class FileOperationService(
             await _menuService.DisplayMessageAsync($"Error searching files: {ex.Message}", true);
             await _menuService.WaitForUserInputAsync();
         }
+    }
+    
+    private static string GetContentType(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".txt" => "text/plain",
+            ".pdf" => "application/pdf",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".xls" => "application/vnd.ms-excel",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".mp4" => "video/mp4",
+            ".mp3" => "audio/mpeg",
+            ".zip" => "application/zip",
+            ".json" => "application/json",
+            ".xml" => "application/xml",
+            ".csv" => "text/csv",
+            _ => "application/octet-stream"
+        };
+    }
+    
+    private static string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+    
+    private static string TruncateString(string input, int maxLength)
+    {
+        if (string.IsNullOrEmpty(input) || input.Length <= maxLength)
+            return input;
+        return input.Substring(0, maxLength - 3) + "...";
     }
 }

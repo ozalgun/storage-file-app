@@ -38,4 +38,16 @@ public class File
         Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         UpdatedAt = DateTime.UtcNow;
     }
+    
+    public void MarkAsAvailable()
+    {
+        Status = FileStatus.Available;
+        UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public void MarkAsFailed()
+    {
+        Status = FileStatus.Failed;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }

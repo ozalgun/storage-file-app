@@ -35,7 +35,7 @@ public class FileStorageApplicationService(
     private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     private readonly ILogger<FileStorageApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    public async Task<FileStorageResult> StoreFileAsync(StoreFileRequest request)
+    public async Task<FileStorageResult> StoreFileAsync(StoreFileRequest request, byte[] fileBytes)
     {
         try
         {

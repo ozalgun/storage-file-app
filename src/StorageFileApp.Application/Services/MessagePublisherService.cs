@@ -6,6 +6,7 @@ namespace StorageFileApp.Application.Services;
 
 public interface IMessagePublisherService
 {
+    Task PublishAsync<T>(T message) where T : class;
     Task PublishFileCreatedAsync(Guid fileId, string fileName, long fileSize, string contentType, string checksum);
     Task PublishFileStatusChangedAsync(Guid fileId, string fileName, string oldStatus, string newStatus);
     Task PublishFileDeletedAsync(Guid fileId, string fileName);
@@ -22,17 +23,21 @@ public class MessagePublisherService(IPublishEndpoint publishEndpoint, ILogger<M
     private readonly IPublishEndpoint _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
     private readonly ILogger<MessagePublisherService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+    public async Task PublishAsync<T>(T message) where T : class
+    {
+        await _publishEndpoint.Publish(message);
+        _logger.LogDebug("Published message of type {MessageType}", typeof(T).Name);
+    }
+
     public async Task PublishFileCreatedAsync(Guid fileId, string fileName, long fileSize, string contentType, string checksum)
     {
-        var message = new FileCreatedEvent
-        {
-            FileId = fileId,
-            FileName = fileName,
-            FileSize = fileSize,
-            ContentType = contentType,
-            Checksum = checksum,
-            CreatedAt = DateTime.UtcNow
-        };
+        var message = new FileCreatedEvent(
+            FileId: fileId,
+            FileName: fileName,
+            FileSize: fileSize,
+            CreatedAt: DateTime.UtcNow,
+            ContentType: contentType
+        );
 
         await _publishEndpoint.Publish(message);
         _logger.LogInformation("Published FileCreatedEvent: FileId={FileId}, FileName={FileName}", fileId, fileName);
@@ -40,14 +45,12 @@ public class MessagePublisherService(IPublishEndpoint publishEndpoint, ILogger<M
 
     public async Task PublishFileStatusChangedAsync(Guid fileId, string fileName, string oldStatus, string newStatus)
     {
-        var message = new FileStatusChangedEvent
-        {
-            FileId = fileId,
-            FileName = fileName,
-            OldStatus = oldStatus,
-            NewStatus = newStatus,
-            ChangedAt = DateTime.UtcNow
-        };
+        var message = new FileStatusChangedEvent(
+            FileId: fileId,
+            OldStatus: oldStatus,
+            NewStatus: newStatus,
+            ChangedAt: DateTime.UtcNow
+        );
 
         await _publishEndpoint.Publish(message);
         _logger.LogInformation("Published FileStatusChangedEvent: FileId={FileId}, {OldStatus} -> {NewStatus}", 
@@ -56,12 +59,12 @@ public class MessagePublisherService(IPublishEndpoint publishEndpoint, ILogger<M
 
     public async Task PublishFileDeletedAsync(Guid fileId, string fileName)
     {
-        var message = new FileDeletedEvent
-        {
-            FileId = fileId,
-            FileName = fileName,
-            DeletedAt = DateTime.UtcNow
-        };
+        var message = new FileDeletedEvent(
+            FileId: fileId,
+            FileName: fileName,
+            DeletedAt: DateTime.UtcNow,
+            ChunkCount: 0 // This would need to be passed as parameter
+        );
 
         await _publishEndpoint.Publish(message);
         _logger.LogInformation("Published FileDeletedEvent: FileId={FileId}, FileName={FileName}", fileId, fileName);
@@ -69,16 +72,14 @@ public class MessagePublisherService(IPublishEndpoint publishEndpoint, ILogger<M
 
     public async Task PublishChunkCreatedAsync(Guid chunkId, Guid fileId, int order, long size, string checksum, Guid storageProviderId)
     {
-        var message = new ChunkCreatedEvent
-        {
-            ChunkId = chunkId,
-            FileId = fileId,
-            Order = order,
-            Size = size,
-            Checksum = checksum,
-            StorageProviderId = storageProviderId,
-            CreatedAt = DateTime.UtcNow
-        };
+        var message = new ChunkCreatedEvent(
+            ChunkId: chunkId,
+            FileId: fileId,
+            Order: order,
+            Size: size,
+            StorageProviderId: storageProviderId,
+            CreatedAt: DateTime.UtcNow
+        );
 
         await _publishEndpoint.Publish(message);
         _logger.LogInformation("Published ChunkCreatedEvent: ChunkId={ChunkId}, FileId={FileId}, Order={Order}", 
@@ -87,14 +88,13 @@ public class MessagePublisherService(IPublishEndpoint publishEndpoint, ILogger<M
 
     public async Task PublishChunkStatusChangedAsync(Guid chunkId, Guid fileId, string oldStatus, string newStatus)
     {
-        var message = new ChunkStatusChangedEvent
-        {
-            ChunkId = chunkId,
-            FileId = fileId,
-            OldStatus = oldStatus,
-            NewStatus = newStatus,
-            ChangedAt = DateTime.UtcNow
-        };
+        var message = new ChunkStatusChangedEvent(
+            ChunkId: chunkId,
+            FileId: fileId,
+            OldStatus: oldStatus,
+            NewStatus: newStatus,
+            ChangedAt: DateTime.UtcNow
+        );
 
         await _publishEndpoint.Publish(message);
         _logger.LogInformation("Published ChunkStatusChangedEvent: ChunkId={ChunkId}, {OldStatus} -> {NewStatus}", 
