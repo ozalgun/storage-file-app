@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using StorageFileApp.Application.Services;
 using StorageFileApp.Application.Interfaces;
+using StorageFileApp.Application.UseCases;
 using StorageFileApp.Domain.Services;
 
 namespace StorageFileApp.Application.Tests.Services;
@@ -21,6 +22,7 @@ public class SimpleApplicationServiceTests
         var integrityServiceMock = new Mock<IFileIntegrityDomainService>();
         var validationServiceMock = new Mock<IFileValidationDomainService>();
         var strategyServiceMock = new Mock<IStorageStrategyDomainService>();
+        var chunkingUseCaseMock = new Mock<IFileChunkingUseCase>();
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var loggerMock = new Mock<ILogger<FileStorageApplicationService>>();
 
@@ -35,6 +37,7 @@ public class SimpleApplicationServiceTests
             integrityServiceMock.Object,
             validationServiceMock.Object,
             strategyServiceMock.Object,
+            chunkingUseCaseMock.Object,
             unitOfWorkMock.Object,
             loggerMock.Object));
 
@@ -49,12 +52,12 @@ public class SimpleApplicationServiceTests
         var chunkRepositoryMock = new Mock<IChunkRepository>();
         var storageProviderRepositoryMock = new Mock<IStorageProviderRepository>();
         var storageServiceMock = new Mock<IStorageService>();
+        var chunkingServiceMock = new Mock<IFileChunkingDomainService>();
+        var mergingServiceMock = new Mock<IFileMergingDomainService>();
+        var integrityServiceMock = new Mock<IFileIntegrityDomainService>();
+        var optimizationServiceMock = new Mock<IChunkOptimizationDomainService>();
         var storageProviderFactoryMock = new Mock<IStorageProviderFactory>();
         var storageStrategyServiceMock = new Mock<IStorageStrategyService>();
-        var chunkingServiceMock = new Mock<IFileChunkingDomainService>();
-        var integrityServiceMock = new Mock<IFileIntegrityDomainService>();
-        var validationServiceMock = new Mock<IFileValidationDomainService>();
-        var strategyServiceMock = new Mock<IStorageStrategyDomainService>();
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var loggerMock = new Mock<ILogger<FileChunkingApplicationService>>();
 
@@ -65,11 +68,11 @@ public class SimpleApplicationServiceTests
             storageProviderRepositoryMock.Object,
             storageServiceMock.Object,
             chunkingServiceMock.Object,
-            storageStrategyServiceMock.Object,
-            chunkingServiceMock.Object,
+            mergingServiceMock.Object,
             integrityServiceMock.Object,
-            validationServiceMock.Object,
-            strategyServiceMock.Object,
+            optimizationServiceMock.Object,
+            storageProviderFactoryMock.Object,
+            storageStrategyServiceMock.Object,
             unitOfWorkMock.Object,
             loggerMock.Object));
 
