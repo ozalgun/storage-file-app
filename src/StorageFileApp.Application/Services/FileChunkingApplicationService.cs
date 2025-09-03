@@ -76,7 +76,7 @@ public class FileChunkingApplicationService(
             
             if (request.FileBytes != null)
             {
-                // Process each chunk with actual data using Round Robin strategy
+                // Process each chunk with actual data
                 foreach (var chunk in fileChunks)
                 {
                     // Calculate chunk data
@@ -88,18 +88,25 @@ public class FileChunkingApplicationService(
                     using var stream = new MemoryStream(chunkData);
                     var chunkChecksum = await _integrityService.CalculateFileChecksumAsync(stream);
                     
-                    // Select storage provider using Round Robin strategy
-                    var selectedProvider = await _storageStrategyService.SelectStorageProviderAsync(chunk, availableProviders);
-                    _logger.LogInformation("Round Robin: Chunk {ChunkOrder} -> Provider {ProviderName} (Type: {ProviderType})", 
-                        chunk.Order, selectedProvider.Name, selectedProvider.Type);
+                    // Get the storage provider that was already assigned by domain service
+                    var assignedProvider = availableProviders.FirstOrDefault(p => p.Id == chunk.StorageProviderId);
+                    if (assignedProvider == null)
+                    {
+                        _logger.LogError("Assigned storage provider {ProviderId} not found for chunk {ChunkOrder}", 
+                            chunk.StorageProviderId, chunk.Order);
+                        continue;
+                    }
                     
-                    // Update chunk with checksum and selected provider
-                    var updatedChunk = new FileChunk(chunk.FileId, chunk.Order, chunk.Size, chunkChecksum, selectedProvider.Id);
+                    _logger.LogInformation("Using assigned provider: Chunk {ChunkOrder} -> Provider {ProviderName} (Type: {ProviderType})", 
+                        chunk.Order, assignedProvider.Name, assignedProvider.Type);
                     
-                    // Get the appropriate storage service for the selected provider
-                    var storageService = _storageProviderFactory.GetStorageService(selectedProvider);
+                    // Update chunk with checksum (provider already assigned by domain service)
+                    var updatedChunk = new FileChunk(chunk.FileId, chunk.Order, chunk.Size, chunkChecksum, assignedProvider.Id);
                     
-                    // Store chunk data to selected storage provider
+                    // Get the appropriate storage service for the assigned provider
+                    var storageService = _storageProviderFactory.GetStorageService(assignedProvider);
+                    
+                    // Store chunk data to assigned storage provider
                     var storeResult = await storageService.StoreChunkAsync(updatedChunk, chunkData);
                     
                     if (storeResult)
@@ -107,13 +114,13 @@ public class FileChunkingApplicationService(
                         // Update chunk status
                         updatedChunk.UpdateStatus(ChunkStatus.Stored);
                         _logger.LogInformation("Successfully stored chunk {ChunkId} to {ProviderName}", 
-                            updatedChunk.Id, selectedProvider.Name);
+                            updatedChunk.Id, assignedProvider.Name);
                     }
                     else
                     {
                         updatedChunk.UpdateStatus(ChunkStatus.Failed);
                         _logger.LogError("Failed to store chunk {ChunkId} to {ProviderName}", 
-                            updatedChunk.Id, selectedProvider.Name);
+                            updatedChunk.Id, assignedProvider.Name);
                     }
                     
                     // Save chunk to repository
