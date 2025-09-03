@@ -29,46 +29,78 @@ tests/
 
 ## 🚀 Özellikler
 
-- ✅ Büyük dosyaları otomatik chunk'lama
-- ✅ Dinamik chunk boyutlandırma algoritması
-- ✅ Çoklu storage provider desteği
-- ✅ Metadata veritabanında saklama
-- ✅ Dosya bütünlük kontrolü (SHA256)
-- ✅ Dependency Injection (IoC)
-- ✅ Kapsamlı loglama
-- ✅ Test edilebilir mimari
+### Core Features
+- ✅ **Otomatik Chunk'lama**: Büyük dosyaları dinamik boyutlarda parçalara ayırma
+- ✅ **Çoklu Storage Provider**: FileSystem, Database, MinIO S3-compatible storage
+- ✅ **Dosya Bütünlük Kontrolü**: SHA256 checksum ile güvenli dosya doğrulama
+- ✅ **Metadata Yönetimi**: PostgreSQL'de chunk bilgileri ve dosya metadata'sı
+- ✅ **Event-Driven Architecture**: RabbitMQ ile asenkron mesajlaşma
+- ✅ **Caching**: Redis ile performans optimizasyonu
+
+### Technical Features
+- ✅ **Clean Architecture**: Domain-Driven Design prensiplerine uygun katmanlı yapı
+- ✅ **SOLID Principles**: Test edilebilir ve genişletilebilir kod yapısı
+- ✅ **Dependency Injection**: Microsoft.Extensions.DependencyInjection ile IoC
+- ✅ **Repository Pattern**: Veri erişim katmanı soyutlaması
+- ✅ **Unit of Work**: Transaction yönetimi
+- ✅ **Comprehensive Logging**: Serilog ile detaylı loglama
+- ✅ **Health Monitoring**: Sistem sağlık kontrolü ve monitoring
+- ✅ **Docker Support**: Containerized development environment
 
 ## 🛠️ Gereksinimler
 
 - .NET 9.0 SDK
+- Docker & Docker Compose
 - Visual Studio 2022 / JetBrains Rider / VS Code
 
-## 📦 Kurulum
+## 🐳 Docker ile Kurulum ve Çalıştırma
 
-1. Repository'yi klonlayın:
+### 1. Repository'yi Klonlayın
 ```bash
-git clone <repository-url>
+git clone https://github.com/ozalgun/storage-file-app.git
 cd storage-file-app
 ```
 
-2. Solution'ı restore edin:
+### 2. Docker Compose ile Servisleri Başlatın
 ```bash
+# Tüm servisleri başlat (PostgreSQL, RabbitMQ, Redis, MinIO)
+docker-compose up -d
+
+# Servislerin durumunu kontrol et
+docker-compose ps
+```
+
+### 3. Servis Erişim Bilgileri
+
+| Servis | URL | Kullanıcı | Şifre |
+|--------|-----|-----------|-------|
+| **PostgreSQL** | `localhost:5432` | `storageuser` | `storagepass123` |
+| **RabbitMQ Management** | http://localhost:15672 | `storageuser` | `storagepass123` |
+| **MinIO Console** | http://localhost:9001 | `minioadmin` | `minioadmin123` |
+| **Redis** | `localhost:6379` | - | - |
+
+### 4. Uygulamayı Çalıştırın
+```bash
+# Solution'ı restore edin
 dotnet restore
-```
 
-3. Projeyi build edin:
-```bash
+# Projeyi build edin
 dotnet build
-```
 
-4. Testleri çalıştırın:
-```bash
+# Testleri çalıştırın
 dotnet test
+
+# Console uygulamasını çalıştırın
+dotnet run --project src/StorageFileApp.Console
 ```
 
-5. Console uygulamasını çalıştırın:
+### 5. Servisleri Durdurma
 ```bash
-dotnet run --project src/StorageFileApp.Console
+# Tüm servisleri durdur
+docker-compose down
+
+# Verileri de silmek için
+docker-compose down -v
 ```
 
 ## 🧪 Test
@@ -95,18 +127,47 @@ dotnet test --collect:"XPlat Code Coverage"
 
 ## 🔧 Geliştirme
 
+### Proje Yapısı
+```
+src/
+├── StorageFileApp.Domain/           # Domain entities, services, events
+│   ├── Entities/                   # File, Chunk, StorageProvider entities
+│   ├── Services/                   # Domain services (chunking, integrity, validation)
+│   ├── Events/                     # Domain events
+│   └── ValueObjects/               # FileMetadata, ChunkInfo
+├── StorageFileApp.Application/      # Application layer
+│   ├── Services/                   # Application services
+│   ├── UseCases/                   # Use case interfaces
+│   ├── DTOs/                       # Data transfer objects
+│   └── Events/                     # Event handlers
+├── StorageFileApp.Infrastructure/  # External concerns
+│   ├── Repositories/               # Data access implementations
+│   ├── Services/                   # Storage providers, messaging
+│   └── Data/                       # DbContext, configurations
+└── StorageFileApp.Console/         # Console application
+    └── Services/                   # Console-specific services
+```
+
 ### Yeni Feature Ekleme
-1. Domain layer'da entity/interface tanımla
-2. Application layer'da service/use case implement et
-3. Infrastructure layer'da concrete implementation yaz
-4. Console layer'da user interface ekle
-5. Test coverage ekle
+1. **Domain Layer**: Entity, value object, domain service tanımla
+2. **Application Layer**: Use case interface ve application service implement et
+3. **Infrastructure Layer**: Repository, external service implementation yaz
+4. **Console Layer**: User interface ve menu option ekle
+5. **Test Coverage**: Unit testler ve integration testler ekle
 
 ### Yeni Storage Provider Ekleme
-1. `IStorageProvider` interface'ini implement et
-2. Infrastructure layer'da concrete class yaz
-3. Dependency injection configuration'ı güncelle
-4. Test coverage ekle
+1. **Interface Implementation**: `IStorageProvider` interface'ini implement et
+2. **Infrastructure Service**: `StorageFileApp.Infrastructure/Services/` altında concrete class yaz
+3. **Factory Pattern**: `StorageProviderFactory`'ye yeni provider'ı ekle
+4. **Dependency Injection**: `InfrastructureServiceCollectionExtensions.cs`'de registration ekle
+5. **Configuration**: `appsettings.json`'da provider ayarları ekle
+6. **Test Coverage**: Unit testler ve integration testler yaz
+
+### Event-Driven Development
+- **Domain Events**: Business logic'te domain event'ler tanımla
+- **Event Handlers**: Application layer'da event handler'lar implement et
+- **Message Publishing**: RabbitMQ üzerinden event'leri publish et
+- **Event Consumers**: Background service'lerde event'leri consume et
 
 ## 📝 Loglama
 
@@ -126,13 +187,33 @@ Proje Serilog kullanarak kapsamlı loglama yapar:
 
 ## 🚧 Roadmap
 
-- [ ] Web API interface
-- [ ] Real-time progress monitoring
-- [ ] Compression support
-- [ ] Encryption support
-- [ ] Cloud storage providers (AWS S3, Azure Blob)
-- [ ] Performance optimization
-- [ ] Monitoring ve metrics
+### Phase 1 - Core Features ✅
+- [x] File chunking and merging
+- [x] Multiple storage providers
+- [x] Database metadata storage
+- [x] Event-driven architecture
+- [x] Health monitoring
+- [x] Docker support
+
+### Phase 2 - Enhanced Features
+- [ ] **Web API Interface**: RESTful API endpoints
+- [ ] **Real-time Progress**: WebSocket ile progress tracking
+- [ ] **Compression Support**: Gzip, Brotli compression
+- [ ] **Encryption Support**: AES-256 encryption for sensitive files
+- [ ] **Advanced Monitoring**: Prometheus metrics, Grafana dashboards
+
+### Phase 3 - Cloud Integration
+- [ ] **AWS S3 Provider**: Native AWS S3 integration
+- [ ] **Azure Blob Storage**: Azure Blob Storage provider
+- [ ] **Google Cloud Storage**: GCS provider
+- [ ] **Multi-region Support**: Cross-region replication
+
+### Phase 4 - Enterprise Features
+- [ ] **User Management**: Authentication & authorization
+- [ ] **Audit Logging**: Comprehensive audit trails
+- [ ] **Backup & Recovery**: Automated backup strategies
+- [ ] **Performance Optimization**: Advanced caching, CDN integration
+- [ ] **Scalability**: Horizontal scaling support
 
 ## 🤝 Katkıda Bulunma
 
@@ -148,7 +229,7 @@ Bu proje MIT lisansı altında lisanslanmıştır.
 
 ## 👥 Geliştirici
 
-Storage File App Team
+Özal Algün
 
 ---
 
