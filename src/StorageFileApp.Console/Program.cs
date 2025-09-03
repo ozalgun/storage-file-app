@@ -6,6 +6,7 @@ using Serilog;
 using StorageFileApp.Application.DependencyInjection;
 using StorageFileApp.ConsoleApp.Services;
 using StorageFileApp.Infrastructure.DependencyInjection;
+using StorageFileApp.Infrastructure.Data;
 
 namespace StorageFileApp.ConsoleApp;
 
@@ -31,6 +32,15 @@ public class Program
 
             // Build host
             var host = CreateHostBuilder(args, config).Build();
+
+            // Seed data
+            Log.Information("Seeding database...");
+            using (var scope = host.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<StorageFileDbContext>();
+                await SeedData.SeedAsync(context);
+            }
+            Log.Information("Database seeding completed");
 
             // Run the application
             var app = host.Services.GetRequiredService<ConsoleApplicationService>();

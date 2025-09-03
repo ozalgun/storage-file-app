@@ -11,7 +11,7 @@ public class FileValidationDomainService : IFileValidationDomainService
     private const int MIN_FILE_NAME_LENGTH = 1;
     
     private readonly string[] _forbiddenCharacters = { "<", ">", ":", "\"", "|", "?", "*", "\\", "/" };
-    private readonly string[] _allowedExtensions = { ".txt", ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".gif", ".mp4", ".avi", ".zip", ".rar" };
+    private readonly string[] _allowedExtensions = { ".txt", ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".gif", ".mp4", ".avi", ".zip", ".rar" ,".bin"};
     
     public Task<bool> ValidateFileNameAsync(string fileName)
     {

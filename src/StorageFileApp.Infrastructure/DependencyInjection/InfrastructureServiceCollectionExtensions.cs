@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using StorageFileApp.Application.Interfaces;
 using StorageFileApp.Domain.Events;
 using StorageFileApp.Infrastructure.Data;
@@ -31,7 +32,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Storage Services
-        services.AddScoped<IStorageService, FileSystemStorageService>();
+        services.AddScoped<IStorageService>(provider => 
+        {
+            var logger = provider.GetRequiredService<ILogger<FileSystemStorageService>>();
+            return new FileSystemStorageService(logger, "storage");
+        });
 
         // Domain Event Publisher
         services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();

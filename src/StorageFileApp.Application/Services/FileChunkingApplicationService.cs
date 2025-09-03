@@ -50,26 +50,62 @@ public class FileChunkingApplicationService(
             
             // 2. Get available storage providers
             var availableProviders = await _storageProviderRepository.GetAvailableProvidersAsync();
+            _logger.LogInformation("Found {ProviderCount} available storage providers", availableProviders.Count());
             if (!availableProviders.Any())
             {
+                _logger.LogWarning("No available storage providers found for chunking");
                 return new ChunkingResult(false, ErrorMessage: "No available storage providers");
             }
             
             // 3. Calculate optimal chunk size
             var chunkSize = request.ChunkSize ?? _chunkingService.CalculateOptimalChunkSize(file.Size);
+            _logger.LogInformation("Calculated chunk size: {ChunkSize} bytes", chunkSize);
             
             // 4. Create chunks using domain service
             var chunkInfos = _chunkingService.CalculateOptimalChunks(file.Size);
+            _logger.LogInformation("Created {ChunkCount} chunk infos", chunkInfos.Count());
             
-            // 5. Save chunks to repository
+            // 5. Process file bytes into chunks
             var chunks = new List<DTOs.ChunkInfo>();
             var providerIds = availableProviders.Select(p => p.Id).ToList();
             var fileChunks = _chunkingService.CreateChunks(file, chunkInfos, providerIds);
             
-            foreach (var chunk in fileChunks)
+            if (request.FileBytes != null)
             {
-                await _chunkRepository.AddAsync(chunk);
-                chunks.Add(new DTOs.ChunkInfo(chunk.Id, chunk.Order, chunk.Size, chunk.StorageProviderId, chunk.Status, chunk.CreatedAt));
+                // Process each chunk with actual data
+                foreach (var chunk in fileChunks)
+                {
+                    // Calculate chunk data
+                    var chunkData = new byte[chunk.Size];
+                    var offset = chunk.Order * chunkSize;
+                    Array.Copy(request.FileBytes, offset, chunkData, 0, chunk.Size);
+                    
+                    // Calculate chunk checksum
+                    using var stream = new MemoryStream(chunkData);
+                    var chunkChecksum = await _integrityService.CalculateFileChecksumAsync(stream);
+                    
+                    // Update chunk with checksum
+                    var updatedChunk = new FileChunk(chunk.FileId, chunk.Order, chunk.Size, chunkChecksum, chunk.StorageProviderId);
+                    
+                    // Store chunk data to storage provider
+                    await _storageService.StoreChunkAsync(updatedChunk, chunkData);
+                    
+                    // Update chunk status
+                    updatedChunk.UpdateStatus(ChunkStatus.Stored);
+                    
+                    // Save chunk to repository
+                    await _chunkRepository.AddAsync(updatedChunk);
+                    chunks.Add(new DTOs.ChunkInfo(updatedChunk.Id, updatedChunk.Order, updatedChunk.Size, updatedChunk.StorageProviderId, updatedChunk.Status, updatedChunk.CreatedAt));
+                }
+            }
+            else
+            {
+                // Fallback: just save chunk metadata without data
+                foreach (var chunk in fileChunks)
+                {
+                    await _chunkRepository.AddAsync(chunk);
+                    chunks.Add(new DTOs.ChunkInfo(chunk.Id, chunk.Order, chunk.Size, chunk.StorageProviderId, chunk.Status, chunk.CreatedAt));
+                }
             }
             
             // 6. Update file status

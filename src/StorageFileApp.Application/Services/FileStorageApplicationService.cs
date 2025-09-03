@@ -20,6 +20,7 @@ public class FileStorageApplicationService(
     IFileIntegrityDomainService integrityService,
     IFileValidationDomainService validationService,
     IStorageStrategyDomainService strategyService,
+    IFileChunkingUseCase chunkingUseCase,
     IUnitOfWork unitOfWork,
     ILogger<FileStorageApplicationService> logger)
     : IFileStorageUseCase
@@ -32,6 +33,7 @@ public class FileStorageApplicationService(
     private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
     private readonly IFileValidationDomainService _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
     private readonly IStorageStrategyDomainService _strategyService = strategyService ?? throw new ArgumentNullException(nameof(strategyService));
+    private readonly IFileChunkingUseCase _chunkingUseCase = chunkingUseCase ?? throw new ArgumentNullException(nameof(chunkingUseCase));
     private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     private readonly ILogger<FileStorageApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -62,19 +64,49 @@ public class FileStorageApplicationService(
                 }
             }
             
-            // 3. Create file entity
-            var file = new FileEntity(request.FileName, request.FileSize, string.Empty, metadata);
+            // 3. Calculate checksum from file bytes
+            string checksum;
+            using (var stream = new MemoryStream(fileBytes))
+            {
+                checksum = await _integrityService.CalculateFileChecksumAsync(stream);
+            }
             
-            // 4. Validate file
+            // 4. Create file entity
+            var file = new FileEntity(request.FileName, request.FileSize, checksum, metadata);
+            
+            // 5. Validate file
             var validationResult = await _validationService.ValidateFileForStorageAsync(file);
             if (!validationResult.IsValid)
             {
                 return new FileStorageResult(false, ErrorMessage: string.Join(", ", validationResult.Errors));
             }
             
-            // 5. Save file to repository
+            // 6. Save file to repository
             await _fileRepository.AddAsync(file);
             await _unitOfWork.SaveChangesAsync();
+            
+            // 7. Process file chunking if file is large enough
+            _logger.LogInformation("File size: {FileSize} bytes, threshold: {Threshold} bytes", file.Size, 1024 * 1024);
+            if (file.Size >= 1024 * 1024) // 1MB threshold (changed to >=)
+            {
+                _logger.LogInformation("Starting chunking process for large file: {FileName}, Size: {FileSize}", 
+                    request.FileName, file.Size);
+                
+                var chunkingRequest = new ChunkFileRequest(file.Id, fileBytes);
+                var chunkingResult = await _chunkingUseCase.ChunkFileAsync(chunkingRequest);
+                
+                if (!chunkingResult.Success)
+                {
+                    _logger.LogWarning("Chunking failed for file {FileName}: {ErrorMessage}", 
+                        request.FileName, chunkingResult.ErrorMessage);
+                    // Continue with file storage even if chunking fails
+                }
+                else
+                {
+                    _logger.LogInformation("Chunking completed for file: {FileName}, Chunks: {ChunkCount}", 
+                        request.FileName, chunkingResult.Chunks?.Count ?? 0);
+                }
+            }
             
             _logger.LogInformation("File storage process completed for file: {FileName}, ID: {FileId}", 
                 request.FileName, file.Id);

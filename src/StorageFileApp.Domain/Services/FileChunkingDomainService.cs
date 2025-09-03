@@ -82,7 +82,7 @@ public class FileChunkingDomainService : IFileChunkingDomainService
     public long CalculateOptimalChunkSize(long fileSize)
     {
         // Business rules for chunk sizing
-        if (fileSize < 1024 * 1024) // < 1MB
+        if (fileSize <= 1024 * 1024) // <= 1MB
             return MIN_CHUNK_SIZE; // 64KB chunks
             
         if (fileSize < 100 * 1024 * 1024) // < 100MB

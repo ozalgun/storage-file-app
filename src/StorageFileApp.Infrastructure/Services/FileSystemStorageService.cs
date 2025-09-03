@@ -27,14 +27,30 @@ public class FileSystemStorageService : IStorageService
             var filePath = GetChunkFilePath(chunk);
             var directory = Path.GetDirectoryName(filePath);
             
+            _logger.LogInformation("Attempting to store chunk {ChunkId} to {FilePath}", chunk.Id, filePath);
+            _logger.LogInformation("Base path: {BasePath}, Directory: {Directory}", _basePath, directory);
+            
             if (!string.IsNullOrEmpty(directory))
             {
                 Directory.CreateDirectory(directory);
+                _logger.LogInformation("Created directory: {Directory}", directory);
             }
 
             await File.WriteAllBytesAsync(filePath, data);
             
-            _logger.LogInformation("Stored chunk {ChunkId} to file system at {FilePath}", chunk.Id, filePath);
+            // Verify file was created
+            if (File.Exists(filePath))
+            {
+                var fileInfo = new FileInfo(filePath);
+                _logger.LogInformation("Successfully stored chunk {ChunkId} to file system at {FilePath}, Size: {Size} bytes", 
+                    chunk.Id, filePath, fileInfo.Length);
+            }
+            else
+            {
+                _logger.LogError("File was not created at {FilePath}", filePath);
+                return false;
+            }
+            
             return true;
         }
         catch (Exception ex)

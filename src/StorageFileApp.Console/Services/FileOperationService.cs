@@ -3,17 +3,21 @@ using StorageFileApp.Application.UseCases;
 using StorageFileApp.ConsoleApp.Services;
 using System;
 using StorageFileApp.Application.DTOs;
+using StorageFileApp.Domain.Services;
+using System.Security.Cryptography;
 
 namespace StorageFileApp.ConsoleApp.Services;
 
 public class FileOperationService(
     ILogger<FileOperationService> logger,
     IFileStorageUseCase fileStorageUseCase,
-    MenuService menuService)
+    MenuService menuService,
+    IFileIntegrityDomainService integrityService)
 {
     private readonly ILogger<FileOperationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IFileStorageUseCase _fileStorageUseCase = fileStorageUseCase ?? throw new ArgumentNullException(nameof(fileStorageUseCase));
     private readonly MenuService _menuService = menuService ?? throw new ArgumentNullException(nameof(menuService));
+    private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
 
     public async Task HandleFileOperationsAsync()
     {
@@ -80,15 +84,21 @@ public class FileOperationService(
             if (await _menuService.ConfirmOperationAsync("store this file"))
             {
                 Console.WriteLine("\nStoring file...");
+                Console.WriteLine("Calculating checksum...");
                 
                 var fileBytes = await File.ReadAllBytesAsync(filePath);
                 var contentType = GetContentType(fileName);
+                
+                // Calculate checksum
+                var checksum = await CalculateFileChecksumAsync(fileBytes);
+                Console.WriteLine($"Checksum: {checksum}");
                 
                 var request = new StoreFileRequest(
                     FileName: fileName,
                     FileSize: fileSize,
                     ContentType: contentType,
-                    Description: $"Stored from: {filePath}"
+                    Description: $"Stored from: {filePath}",
+                    CustomProperties: new Dictionary<string, string> { { "Checksum", checksum } }
                 );
                 
                 var result = await _fileStorageUseCase.StoreFileAsync(request, fileBytes);
@@ -410,6 +420,12 @@ public class FileOperationService(
             await _menuService.DisplayMessageAsync($"Error searching files: {ex.Message}", true);
             await _menuService.WaitForUserInputAsync();
         }
+    }
+    
+    private async Task<string> CalculateFileChecksumAsync(byte[] fileBytes)
+    {
+        using var stream = new MemoryStream(fileBytes);
+        return await _integrityService.CalculateFileChecksumAsync(stream);
     }
     
     private static string GetContentType(string fileName)
