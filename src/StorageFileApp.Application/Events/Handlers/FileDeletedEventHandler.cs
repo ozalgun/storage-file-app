@@ -8,13 +8,15 @@ namespace StorageFileApp.Application.Events.Handlers;
 public class FileDeletedEventHandler(
     ILogger<FileDeletedEventHandler> logger,
     IChunkRepository chunkRepository,
-    IStorageService storageService,
+    IStorageProviderRepository storageProviderRepository,
+    IStorageProviderFactory storageProviderFactory,
     IMessagePublisherService messagePublisherService)
     : IDomainEventHandler<FileDeletedEvent>
 {
     private readonly ILogger<FileDeletedEventHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IChunkRepository _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
-    private readonly IStorageService _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+    private readonly IStorageProviderRepository _storageProviderRepository = storageProviderRepository ?? throw new ArgumentNullException(nameof(storageProviderRepository));
+    private readonly IStorageProviderFactory _storageProviderFactory = storageProviderFactory ?? throw new ArgumentNullException(nameof(storageProviderFactory));
     private readonly IMessagePublisherService _messagePublisherService = messagePublisherService ?? throw new ArgumentNullException(nameof(messagePublisherService));
 
     public async Task HandleAsync(FileDeletedEvent @event)
@@ -36,14 +38,28 @@ public class FileDeletedEventHandler(
             {
                 try
                 {
-                    var deleted = await _storageService.DeleteChunkAsync(chunk);
-                    if (deleted)
+                    // Get the storage provider for this chunk
+                    var storageProvider = await _storageProviderRepository.GetByIdAsync(chunk.StorageProviderId);
+                    if (storageProvider != null)
                     {
-                        _logger.LogDebug("Successfully deleted chunk {ChunkId} from storage", chunk.Id);
+                        // Get the appropriate storage service for this provider
+                        var chunkStorageService = _storageProviderFactory.GetStorageService(storageProvider);
+                        var deleted = await chunkStorageService.DeleteChunkAsync(chunk);
+                        if (deleted)
+                        {
+                            _logger.LogInformation("Successfully deleted chunk {ChunkId} from {ProviderType} storage provider {ProviderName}", 
+                                chunk.Id, storageProvider.Type, storageProvider.Name);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to delete chunk {ChunkId} from {ProviderType} storage provider {ProviderName}", 
+                                chunk.Id, storageProvider.Type, storageProvider.Name);
+                        }
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to delete chunk {ChunkId} from storage", chunk.Id);
+                        _logger.LogWarning("Storage provider {ProviderId} not found for chunk {ChunkId}", 
+                            chunk.StorageProviderId, chunk.Id);
                     }
                 }
                 catch (Exception ex)

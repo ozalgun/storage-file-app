@@ -16,6 +16,7 @@ public class FileStorageApplicationService(
     IChunkRepository chunkRepository,
     IStorageProviderRepository storageProviderRepository,
     IStorageService storageService,
+    IStorageProviderFactory storageProviderFactory,
     IFileChunkingDomainService chunkingService,
     IFileIntegrityDomainService integrityService,
     IFileValidationDomainService validationService,
@@ -29,6 +30,7 @@ public class FileStorageApplicationService(
     private readonly IChunkRepository _chunkRepository = chunkRepository ?? throw new ArgumentNullException(nameof(chunkRepository));
     private readonly IStorageProviderRepository _storageProviderRepository = storageProviderRepository ?? throw new ArgumentNullException(nameof(storageProviderRepository));
     private readonly IStorageService _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+    private readonly IStorageProviderFactory _storageProviderFactory = storageProviderFactory ?? throw new ArgumentNullException(nameof(storageProviderFactory));
     private readonly IFileChunkingDomainService _chunkingService = chunkingService ?? throw new ArgumentNullException(nameof(chunkingService));
     private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
     private readonly IFileValidationDomainService _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
@@ -151,12 +153,37 @@ public class FileStorageApplicationService(
             var chunkDataList = new List<byte[]>();
             foreach (var chunk in chunks.OrderBy(c => c.Order))
             {
-                var chunkData = await _storageService.RetrieveChunkAsync(chunk);
-                if (chunkData == null)
+                try
                 {
-                    return new FileRetrievalResult(false, ErrorMessage: $"Failed to retrieve chunk {chunk.Order}");
+                    // Get the storage provider for this chunk
+                    var storageProvider = await _storageProviderRepository.GetByIdAsync(chunk.StorageProviderId);
+                    if (storageProvider != null)
+                    {
+                        // Get the appropriate storage service for this provider
+                        var chunkStorageService = _storageProviderFactory.GetStorageService(storageProvider);
+                        var chunkData = await chunkStorageService.RetrieveChunkAsync(chunk);
+                        if (chunkData == null)
+                        {
+                            _logger.LogError("Failed to retrieve chunk {ChunkId} from {ProviderType} storage provider {ProviderName}", 
+                                chunk.Id, storageProvider.Type, storageProvider.Name);
+                            return new FileRetrievalResult(false, ErrorMessage: $"Failed to retrieve chunk {chunk.Order} from {storageProvider.Name}");
+                        }
+                        chunkDataList.Add(chunkData);
+                        _logger.LogDebug("Retrieved chunk {ChunkId} from {ProviderType} storage provider {ProviderName}", 
+                            chunk.Id, storageProvider.Type, storageProvider.Name);
+                    }
+                    else
+                    {
+                        _logger.LogError("Storage provider {ProviderId} not found for chunk {ChunkId}", 
+                            chunk.StorageProviderId, chunk.Id);
+                        return new FileRetrievalResult(false, ErrorMessage: $"Storage provider not found for chunk {chunk.Order}");
+                    }
                 }
-                chunkDataList.Add(chunkData);
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving chunk {ChunkId}", chunk.Id);
+                    return new FileRetrievalResult(false, ErrorMessage: $"Error retrieving chunk {chunk.Order}: {ex.Message}");
+                }
             }
             
             // 5. Merge chunks
@@ -175,7 +202,23 @@ public class FileStorageApplicationService(
             
             // 7. Save merged file
             var outputPath = request.OutputPath ?? Path.Combine(Path.GetTempPath(), file.Name);
+            
+            // Check if outputPath is a directory, if so, create a file inside it
+            if (Directory.Exists(outputPath))
+            {
+                outputPath = Path.Combine(outputPath, file.Name);
+            }
+            
+            // Ensure the directory exists
+            var outputDirectory = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrEmpty(outputDirectory) && !Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+                _logger.LogInformation("Created output directory: {OutputDirectory}", outputDirectory);
+            }
+            
             await File.WriteAllBytesAsync(outputPath, mergedData.ToArray());
+            _logger.LogInformation("File saved to: {OutputPath}", outputPath);
             
             _logger.LogInformation("File retrieval process completed for file ID: {FileId}", request.FileId);
             
@@ -210,8 +253,21 @@ public class FileStorageApplicationService(
             {
                 try
                 {
-                    await _storageService.DeleteChunkAsync(chunk);
-                    _logger.LogDebug("Deleted chunk {ChunkId} from storage", chunk.Id);
+                    // Get the storage provider for this chunk
+                    var storageProvider = await _storageProviderRepository.GetByIdAsync(chunk.StorageProviderId);
+                    if (storageProvider != null)
+                    {
+                        // Get the appropriate storage service for this provider
+                        var chunkStorageService = _storageProviderFactory.GetStorageService(storageProvider);
+                        await chunkStorageService.DeleteChunkAsync(chunk);
+                        _logger.LogInformation("Deleted chunk {ChunkId} from {ProviderType} storage provider {ProviderName}", 
+                            chunk.Id, storageProvider.Type, storageProvider.Name);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Storage provider {ProviderId} not found for chunk {ChunkId}", 
+                            chunk.StorageProviderId, chunk.Id);
+                    }
                 }
                 catch (Exception ex)
                 {

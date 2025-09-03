@@ -1,3 +1,4 @@
+using Amazon.S3;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,11 +32,44 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IStorageProviderRepository, StorageProviderRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // Storage Services
-        services.AddScoped<IStorageService>(provider => 
+        // Storage Services - Register concrete implementations
+        services.AddScoped<FileSystemStorageService>(provider => 
         {
             var logger = provider.GetRequiredService<ILogger<FileSystemStorageService>>();
             return new FileSystemStorageService(logger, "storage");
+        });
+        
+        services.AddScoped<MinioS3StorageService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<MinioS3StorageService>>();
+            var s3Client = provider.GetRequiredService<IAmazonS3>();
+            return new MinioS3StorageService(logger, s3Client, "storage-file-app");
+        });
+        
+        // Register IStorageService with default implementation
+        services.AddScoped<IStorageService>(provider => 
+            provider.GetRequiredService<FileSystemStorageService>());
+        
+        // Storage Provider Factory and Strategy
+        services.AddScoped<IStorageProviderFactory, StorageProviderFactory>();
+        services.AddScoped<IStorageStrategyService, StorageStrategyService>();
+        
+        // AWS S3 Configuration
+        services.AddSingleton<IAmazonS3>(provider =>
+        {
+            var config = new AmazonS3Config
+            {
+                ServiceURL = configuration["MinIO:ServiceURL"] ?? "http://localhost:9000",
+                ForcePathStyle = true, // Required for MinIO
+                UseHttp = true
+            };
+            
+            var credentials = new Amazon.Runtime.BasicAWSCredentials(
+                configuration["MinIO:AccessKey"] ?? "minioadmin",
+                configuration["MinIO:SecretKey"] ?? "minioadmin123"
+            );
+            
+            return new AmazonS3Client(credentials, config);
         });
 
         // Domain Event Publisher

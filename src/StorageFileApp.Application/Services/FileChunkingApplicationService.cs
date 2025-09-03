@@ -18,6 +18,8 @@ public class FileChunkingApplicationService(
     IFileMergingDomainService mergingService,
     IFileIntegrityDomainService integrityService,
     IChunkOptimizationDomainService optimizationService,
+    IStorageProviderFactory storageProviderFactory,
+    IStorageStrategyService storageStrategyService,
     IUnitOfWork unitOfWork,
     ILogger<FileChunkingApplicationService> logger)
     : IFileChunkingUseCase
@@ -30,6 +32,8 @@ public class FileChunkingApplicationService(
     private readonly IFileMergingDomainService _mergingService = mergingService ?? throw new ArgumentNullException(nameof(mergingService));
     private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
     private readonly IChunkOptimizationDomainService _optimizationService = optimizationService ?? throw new ArgumentNullException(nameof(optimizationService));
+    private readonly IStorageProviderFactory _storageProviderFactory = storageProviderFactory ?? throw new ArgumentNullException(nameof(storageProviderFactory));
+    private readonly IStorageStrategyService _storageStrategyService = storageStrategyService ?? throw new ArgumentNullException(nameof(storageStrategyService));
     private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     private readonly ILogger<FileChunkingApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -72,7 +76,7 @@ public class FileChunkingApplicationService(
             
             if (request.FileBytes != null)
             {
-                // Process each chunk with actual data
+                // Process each chunk with actual data using Round Robin strategy
                 foreach (var chunk in fileChunks)
                 {
                     // Calculate chunk data
@@ -84,14 +88,33 @@ public class FileChunkingApplicationService(
                     using var stream = new MemoryStream(chunkData);
                     var chunkChecksum = await _integrityService.CalculateFileChecksumAsync(stream);
                     
-                    // Update chunk with checksum
-                    var updatedChunk = new FileChunk(chunk.FileId, chunk.Order, chunk.Size, chunkChecksum, chunk.StorageProviderId);
+                    // Select storage provider using Round Robin strategy
+                    var selectedProvider = await _storageStrategyService.SelectStorageProviderAsync(chunk, availableProviders);
+                    _logger.LogInformation("Round Robin: Chunk {ChunkOrder} -> Provider {ProviderName} (Type: {ProviderType})", 
+                        chunk.Order, selectedProvider.Name, selectedProvider.Type);
                     
-                    // Store chunk data to storage provider
-                    await _storageService.StoreChunkAsync(updatedChunk, chunkData);
+                    // Update chunk with checksum and selected provider
+                    var updatedChunk = new FileChunk(chunk.FileId, chunk.Order, chunk.Size, chunkChecksum, selectedProvider.Id);
                     
-                    // Update chunk status
-                    updatedChunk.UpdateStatus(ChunkStatus.Stored);
+                    // Get the appropriate storage service for the selected provider
+                    var storageService = _storageProviderFactory.GetStorageService(selectedProvider);
+                    
+                    // Store chunk data to selected storage provider
+                    var storeResult = await storageService.StoreChunkAsync(updatedChunk, chunkData);
+                    
+                    if (storeResult)
+                    {
+                        // Update chunk status
+                        updatedChunk.UpdateStatus(ChunkStatus.Stored);
+                        _logger.LogInformation("Successfully stored chunk {ChunkId} to {ProviderName}", 
+                            updatedChunk.Id, selectedProvider.Name);
+                    }
+                    else
+                    {
+                        updatedChunk.UpdateStatus(ChunkStatus.Failed);
+                        _logger.LogError("Failed to store chunk {ChunkId} to {ProviderName}", 
+                            updatedChunk.Id, selectedProvider.Name);
+                    }
                     
                     // Save chunk to repository
                     await _chunkRepository.AddAsync(updatedChunk);
@@ -182,7 +205,23 @@ public class FileChunkingApplicationService(
             
             // 7. Save merged file
             var outputPath = request.OutputPath ?? Path.Combine(Path.GetTempPath(), file.Name);
+            
+            // Check if outputPath is a directory, if so, create a file inside it
+            if (Directory.Exists(outputPath))
+            {
+                outputPath = Path.Combine(outputPath, file.Name);
+            }
+            
+            // Ensure the directory exists
+            var outputDirectory = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrEmpty(outputDirectory) && !Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+                _logger.LogInformation("Created output directory: {OutputDirectory}", outputDirectory);
+            }
+            
             await File.WriteAllBytesAsync(outputPath, mergedData);
+            _logger.LogInformation("File saved to: {OutputPath}", outputPath);
             
             // 8. Update file status
             file.UpdateStatus(FileStatus.Available);
