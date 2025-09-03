@@ -106,5 +106,18 @@ public static class MassTransitConfiguration
             e.ConfigureConsumer<ChunkStoredEventConsumer>(context);
             e.Bind("chunk.stored");
         });
+
+        // Storage Provider Event Consumers
+        cfg.ReceiveEndpoint("storage-health-check-queue", e =>
+        {
+            e.Bind("storage.health.check");
+            // Note: Storage provider health check consumers would be added here
+        });
+
+        cfg.ReceiveEndpoint("storage-space-warning-queue", e =>
+        {
+            e.Bind("storage.space.warning");
+            // Note: Storage provider space warning consumers would be added here
+        });
     }
 }

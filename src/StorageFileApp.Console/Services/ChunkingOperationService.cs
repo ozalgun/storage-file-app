@@ -3,6 +3,7 @@ using StorageFileApp.Application.UseCases;
 using StorageFileApp.Application.DTOs;
 using StorageFileApp.ConsoleApp.Services;
 using System;
+using Console = System.Console;
 
 namespace StorageFileApp.ConsoleApp.Services;
 

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using StorageFileApp.Application.UseCases;
 using StorageFileApp.ConsoleApp.Services;
 using System;
+using Console = System.Console;
 
 namespace StorageFileApp.ConsoleApp.Services;
 

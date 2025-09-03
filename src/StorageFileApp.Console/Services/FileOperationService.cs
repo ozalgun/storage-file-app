@@ -5,6 +5,7 @@ using System;
 using StorageFileApp.Application.DTOs;
 using StorageFileApp.Domain.Services;
 using System.Security.Cryptography;
+using Console = System.Console;
 
 namespace StorageFileApp.ConsoleApp.Services;
 

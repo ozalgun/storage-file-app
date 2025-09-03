@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System;
+using Console = System.Console;
 
 namespace StorageFileApp.ConsoleApp.Services;
 
@@ -34,9 +35,13 @@ public class MenuService(ILogger<MenuService> logger)
         Console.WriteLine();
         Console.WriteLine("4. ℹ️  System Information");
         Console.WriteLine();
-        Console.WriteLine("5. 🚪 Exit");
+        Console.WriteLine("5. 🐰 RabbitMQ Test");
+        Console.WriteLine("   • Test message publishing");
+        Console.WriteLine("   • Verify queue creation");
         Console.WriteLine();
-        Console.Write("Enter your choice (1-5): ");
+        Console.WriteLine("6. 🚪 Exit");
+        Console.WriteLine();
+        Console.Write("Enter your choice (1-6): ");
 
         var choice = Console.ReadLine() ?? string.Empty;
         _logger.LogDebug("User selected menu option: {Choice}", choice);
