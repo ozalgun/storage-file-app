@@ -31,11 +31,7 @@ public static class MassTransitConfiguration
             // Configure RabbitMQ
             x.UsingRabbitMq((context, cfg) =>
             {
-                cfg.Host(rabbitMqHost, rabbitMqPort, rabbitMqVirtualHost, h =>
-                {
-                    h.Username(rabbitMqUsername);
-                    h.Password(rabbitMqPassword);
-                });
+                cfg.Host($"rabbitmq://{rabbitMqUsername}:{rabbitMqPassword}@{rabbitMqHost}:{rabbitMqPort}/{rabbitMqVirtualHost}");
 
                 // Configure message routing
                 ConfigureMessageRouting(cfg);
