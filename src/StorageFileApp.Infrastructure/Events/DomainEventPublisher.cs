@@ -47,17 +47,23 @@ public class DomainEventPublisher(IServiceProvider serviceProvider, ILogger<Doma
     {
         try
         {
-            var handler = _serviceProvider.GetService(handlerType);
+            // Get the handler interface type (IDomainEventHandler<T>)
+            var eventType = typeof(TEvent);
+            var handlerInterface = typeof(IDomainEventHandler<>).MakeGenericType(eventType);
+            
+            var handler = _serviceProvider.GetService(handlerInterface);
             if (handler == null)
             {
-                _logger.LogWarning("Handler {HandlerType} not found in DI container", handlerType.Name);
+                _logger.LogWarning("Handler {HandlerType} not found in DI container for event {EventType}", 
+                    handlerType.Name, eventType.Name);
                 return;
             }
 
-            var handleMethod = handlerType.GetMethod("HandleAsync");
+            var handleMethod = handlerInterface.GetMethod("HandleAsync");
             if (handleMethod == null)
             {
-                _logger.LogError("HandleAsync method not found in handler {HandlerType}", handlerType.Name);
+                _logger.LogError("HandleAsync method not found in handler interface {HandlerInterface}", 
+                    handlerInterface.Name);
                 return;
             }
 
@@ -65,7 +71,7 @@ public class DomainEventPublisher(IServiceProvider serviceProvider, ILogger<Doma
             await task;
 
             _logger.LogDebug("Successfully handled domain event {EventType} with handler {HandlerType}", 
-                typeof(TEvent).Name, handlerType.Name);
+                eventType.Name, handlerType.Name);
         }
         catch (Exception ex)
         {
@@ -142,17 +148,23 @@ public class DomainEventPublisher(IServiceProvider serviceProvider, ILogger<Doma
     {
         try
         {
-            var handler = _serviceProvider.GetService(handlerType);
+            // Get the handler interface type (IDomainEventHandler<T>)
+            var eventType = @event.GetType();
+            var handlerInterface = typeof(IDomainEventHandler<>).MakeGenericType(eventType);
+            
+            var handler = _serviceProvider.GetService(handlerInterface);
             if (handler == null)
             {
-                _logger.LogWarning("Handler {HandlerType} not found in DI container", handlerType.Name);
+                _logger.LogWarning("Handler {HandlerType} not found in DI container for event {EventType}", 
+                    handlerType.Name, eventType.Name);
                 return;
             }
 
-            var handleMethod = handlerType.GetMethod("HandleAsync");
+            var handleMethod = handlerInterface.GetMethod("HandleAsync");
             if (handleMethod == null)
             {
-                _logger.LogError("HandleAsync method not found in handler {HandlerType}", handlerType.Name);
+                _logger.LogError("HandleAsync method not found in handler interface {HandlerInterface}", 
+                    handlerInterface.Name);
                 return;
             }
 
@@ -160,7 +172,7 @@ public class DomainEventPublisher(IServiceProvider serviceProvider, ILogger<Doma
             await task;
 
             _logger.LogDebug("Successfully handled domain event {EventType} with handler {HandlerType}", 
-                @event.GetType().Name, handlerType.Name);
+                eventType.Name, handlerType.Name);
         }
         catch (Exception ex)
         {
