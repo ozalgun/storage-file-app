@@ -1,10 +1,13 @@
 using StorageFileApp.Domain.Enums;
 using StorageFileApp.Domain.ValueObjects;
+using StorageFileApp.Domain.Events;
 
 namespace StorageFileApp.Domain.Entities.FileEntity;
 
-public class File
+public class File : IHasDomainEvents
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+    
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public long Size { get; private set; }
@@ -13,6 +16,8 @@ public class File
     public FileMetadata Metadata { get; private set; } = null!;
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
+    
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     
     private File() { } 
     
@@ -25,12 +30,22 @@ public class File
         Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         Status = FileStatus.Pending;
         CreatedAt = DateTime.UtcNow;
+        
+        // Add domain event
+        _domainEvents.Add(new FileCreatedEvent(this));
     }
     
     public void UpdateStatus(FileStatus status)
     {
+        var oldStatus = Status;
         Status = status;
         UpdatedAt = DateTime.UtcNow;
+        
+        // Add domain event for status change
+        if (oldStatus != status)
+        {
+            _domainEvents.Add(new FileStatusChangedEvent(this, oldStatus, status));
+        }
     }
     
     public void UpdateMetadata(FileMetadata metadata)
@@ -49,5 +64,10 @@ public class File
     {
         Status = FileStatus.Failed;
         UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
     }
 }

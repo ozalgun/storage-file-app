@@ -1,9 +1,12 @@
 using StorageFileApp.Domain.Enums;
+using StorageFileApp.Domain.Events;
 
 namespace StorageFileApp.Domain.Entities.ChunkEntity;
 
-public class FileChunk
+public class FileChunk : IHasDomainEvents
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+    
     public Guid Id { get; private set; }
     public Guid FileId { get; private set; }
     public int Order { get; private set; }
@@ -13,6 +16,8 @@ public class FileChunk
     public ChunkStatus Status { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
+    
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     
     private FileChunk() { } 
     
@@ -26,11 +31,26 @@ public class FileChunk
         StorageProviderId = storageProviderId;
         Status = ChunkStatus.Pending;
         CreatedAt = DateTime.UtcNow;
+        
+        // Add domain event
+        _domainEvents.Add(new ChunkCreatedEvent(this));
     }
     
     public void UpdateStatus(ChunkStatus status)
     {
+        var oldStatus = Status;
         Status = status;
         UpdatedAt = DateTime.UtcNow;
+        
+        // Add domain event for status change
+        if (oldStatus != status)
+        {
+            _domainEvents.Add(new ChunkStatusChangedEvent(this, oldStatus, status));
+        }
+    }
+    
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
     }
 }

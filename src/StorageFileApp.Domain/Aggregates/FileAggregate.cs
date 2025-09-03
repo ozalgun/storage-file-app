@@ -8,7 +8,7 @@ using DomainFileNotFoundException = StorageFileApp.SharedKernel.Exceptions.FileN
 
 namespace StorageFileApp.Domain.Aggregates;
 
-public class FileAggregate
+public class FileAggregate : IHasDomainEvents
 {
     private readonly List<IDomainEvent> _domainEvents = [];
 
@@ -27,9 +27,7 @@ public class FileAggregate
         var file = new FileEntity(name, size, checksum, metadata);
         var aggregate = new FileAggregate { File = file };
 
-        // Domain event'i ekle
-        aggregate._domainEvents.Add(new FileCreatedEvent(file));
-
+        // File entity already adds FileCreatedEvent in its constructor
         return aggregate;
     }
 
@@ -46,8 +44,7 @@ public class FileAggregate
         _chunks.Add(chunk);
         _chunks.Sort((a, b) => a.Order.CompareTo(b.Order));
 
-        // Domain event'i ekle
-        _domainEvents.Add(new ChunkCreatedEvent(chunk));
+        // Chunk entity already adds ChunkCreatedEvent in its constructor
     }
 
     private void UpdateFileStatus(FileStatus newStatus)
@@ -55,22 +52,16 @@ public class FileAggregate
         if (newStatus == File.Status)
             return;
 
-        var oldStatus = File.Status;
         File.UpdateStatus(newStatus);
-
-        // Domain event'i ekle
-        _domainEvents.Add(new FileStatusChangedEvent(File, oldStatus, newStatus));
+        // File entity already adds FileStatusChangedEvent in UpdateStatus method
     }
 
     public void UpdateChunkStatus(int order, ChunkStatus newStatus)
     {
         var chunk = _chunks.FirstOrDefault(c => c.Order == order) ??
                     throw new InvalidFileOperationException("UpdateChunkStatus", $"Chunk with order {order} not found");
-        var oldStatus = chunk.Status;
         chunk.UpdateStatus(newStatus);
-
-        // Domain event'i ekle
-        _domainEvents.Add(new ChunkStatusChangedEvent(chunk, oldStatus, newStatus));
+        // Chunk entity already adds ChunkStatusChangedEvent in UpdateStatus method
     }
 
     private FileChunk GetChunk(int order)
@@ -98,7 +89,7 @@ public class FileAggregate
         var chunk = GetChunk(order);
         chunk.UpdateStatus(ChunkStatus.Stored);
 
-        // Domain event'i ekle
+        // Add ChunkStoredEvent manually since it's not a simple status change
         _domainEvents.Add(new ChunkStoredEvent(chunk, storageProviderId));
 
         // Tüm chunk'lar stored ise file status'u güncelle
