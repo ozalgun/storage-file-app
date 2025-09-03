@@ -97,7 +97,7 @@ public class DomainEventPublisher(IServiceProvider serviceProvider, ILogger<Doma
 
         try
         {
-            var tasks = eventList.Select(@event => PublishAsync(@event));
+            var tasks = eventList.Select(@event => PublishEventByType(@event));
             await Task.WhenAll(tasks);
 
             _logger.LogInformation("Successfully published {EventCount} domain events", eventList.Count);
@@ -105,6 +105,67 @@ public class DomainEventPublisher(IServiceProvider serviceProvider, ILogger<Doma
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error publishing {EventCount} domain events", eventList.Count);
+            throw;
+        }
+    }
+    
+    private async Task PublishEventByType(IDomainEvent @event)
+    {
+        var eventType = @event.GetType();
+        _logger.LogInformation("Publishing domain event: {EventType} at {Timestamp}", 
+            eventType.Name, DateTime.UtcNow);
+
+        try
+        {
+            var handlerTypes = GetHandlerTypes(eventType);
+            
+            if (handlerTypes.Length == 0)
+            {
+                _logger.LogWarning("No handlers found for domain event: {EventType}", eventType.Name);
+                return;
+            }
+
+            var tasks = handlerTypes.Select(handlerType => HandleEventByType(@event, handlerType));
+            await Task.WhenAll(tasks);
+
+            _logger.LogInformation("Successfully published domain event: {EventType} to {HandlerCount} handlers", 
+                eventType.Name, handlerTypes.Length);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error publishing domain event: {EventType}", eventType.Name);
+            throw;
+        }
+    }
+    
+    private async Task HandleEventByType(IDomainEvent @event, Type handlerType)
+    {
+        try
+        {
+            var handler = _serviceProvider.GetService(handlerType);
+            if (handler == null)
+            {
+                _logger.LogWarning("Handler {HandlerType} not found in DI container", handlerType.Name);
+                return;
+            }
+
+            var handleMethod = handlerType.GetMethod("HandleAsync");
+            if (handleMethod == null)
+            {
+                _logger.LogError("HandleAsync method not found in handler {HandlerType}", handlerType.Name);
+                return;
+            }
+
+            var task = (Task)handleMethod.Invoke(handler, [@event])!;
+            await task;
+
+            _logger.LogDebug("Successfully handled domain event {EventType} with handler {HandlerType}", 
+                @event.GetType().Name, handlerType.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling domain event {EventType} with handler {HandlerType}", 
+                @event.GetType().Name, handlerType.Name);
             throw;
         }
     }
