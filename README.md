@@ -123,7 +123,6 @@ dotnet test --collect:"XPlat Code Coverage"
 - **Dependency Injection**: Constructor injection, interface-based design
 - **Repository Pattern**: Data access abstraction
 - **Unit of Work**: Transaction management
-- **Specification Pattern**: Complex query logic
 
 ## 🔧 Geliştirme
 

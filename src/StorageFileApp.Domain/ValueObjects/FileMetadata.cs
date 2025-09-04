@@ -4,7 +4,7 @@ public class FileMetadata
 {
     public string ContentType { get; private set; } = string.Empty;
     public string? Description { get; private set; }
-    public Dictionary<string, string> CustomProperties { get; private set; } = new();
+    public Dictionary<string, string> CustomProperties { get; private set; } = [];
     
     private FileMetadata() { }
     
@@ -12,7 +12,7 @@ public class FileMetadata
     {
         ContentType = contentType ?? throw new ArgumentNullException(nameof(contentType));
         Description = description;
-        CustomProperties = new Dictionary<string, string>();
+        CustomProperties = [];
     }
     
     public void AddCustomProperty(string key, string value)
@@ -25,7 +25,6 @@ public class FileMetadata
     
     public void RemoveCustomProperty(string key)
     {
-        if (CustomProperties.ContainsKey(key))
-            CustomProperties.Remove(key);
+        CustomProperties.Remove(key);
     }
 }
