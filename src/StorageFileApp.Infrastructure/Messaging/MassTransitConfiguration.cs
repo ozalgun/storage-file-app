@@ -21,12 +21,30 @@ public static class MassTransitConfiguration
         services.AddMassTransit(x =>
         {
             // Add all consumers
-            x.AddConsumer<FileCreatedEventConsumer>();
-            x.AddConsumer<FileStatusChangedEventConsumer>();
-            x.AddConsumer<FileDeletedEventConsumer>();
-            x.AddConsumer<ChunkCreatedEventConsumer>();
-            x.AddConsumer<ChunkStatusChangedEventConsumer>();
-            x.AddConsumer<ChunkStoredEventConsumer>();
+            x.AddConsumer<FileCreatedEventConsumer>(opt =>
+            {
+                opt.ConcurrentMessageLimit = 1;
+            });
+            x.AddConsumer<FileStatusChangedEventConsumer>(opt =>
+            {
+                opt.ConcurrentMessageLimit = 1;
+            });
+            x.AddConsumer<FileDeletedEventConsumer>(opt =>
+            {
+                opt.ConcurrentMessageLimit = 1;
+            });
+            x.AddConsumer<ChunkCreatedEventConsumer>(opt =>
+            {
+                opt.ConcurrentMessageLimit = 1;
+            });
+            x.AddConsumer<ChunkStatusChangedEventConsumer>(opt =>
+            {
+                opt.ConcurrentMessageLimit = 1;
+            });
+            x.AddConsumer<ChunkStoredEventConsumer>(opt =>
+            {
+                opt.ConcurrentMessageLimit = 1;
+            });
 
             // Configure RabbitMQ
             x.UsingRabbitMq((context, cfg) =>

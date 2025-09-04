@@ -2,54 +2,63 @@ using Microsoft.EntityFrameworkCore;
 using StorageFileApp.Application.Interfaces;
 using StorageFileApp.Domain.Entities.StorageProviderEntity;
 using StorageFileApp.Domain.Enums;
+using StorageFileApp.Domain.Events;
 using StorageFileApp.Infrastructure.Data;
 
 namespace StorageFileApp.Infrastructure.Repositories;
 
-public class StorageProviderRepository(StorageFileDbContext context)
-    : BaseRepository<StorageProvider>(context), IStorageProviderRepository
+public class StorageProviderRepository(IDbContextFactory<StorageFileDbContext> contextFactory, IUnitOfWork unitOfWork, IDomainEventPublisher domainEventPublisher)
+    : BaseRepository<StorageProvider>(contextFactory, unitOfWork, domainEventPublisher), IStorageProviderRepository
 {
     public async Task<IEnumerable<StorageProvider>> GetActiveProvidersAsync()
     {
-        return await DbSet.Where(p => p.IsActive).ToListAsync();
+        using var context = await GetContextAsync();
+        return await context.Set<StorageProvider>().Where(p => p.IsActive).ToListAsync();
     }
 
     public async Task<IEnumerable<StorageProvider>> GetByTypeAsync(StorageProviderType type)
     {
-        return await DbSet.Where(p => p.Type == type).ToListAsync();
+        using var context = await GetContextAsync();
+        return await context.Set<StorageProvider>().Where(p => p.Type == type).ToListAsync();
     }
 
     public async Task<StorageProvider?> GetByNameAsync(string name)
     {
-        return await DbSet.FirstOrDefaultAsync(p => p.Name == name);
+        using var context = await GetContextAsync();
+        return await context.Set<StorageProvider>().FirstOrDefaultAsync(p => p.Name == name);
     }
 
     public async Task<IEnumerable<StorageProvider>> GetAvailableProvidersAsync()
     {
-        return await DbSet.Where(p => p.IsActive).ToListAsync();
+        using var context = await GetContextAsync();
+        return await context.Set<StorageProvider>().Where(p => p.IsActive).ToListAsync();
     }
 
     public async Task<bool> IsProviderAvailableAsync(Guid providerId)
     {
-        return await DbSet.AnyAsync(p => p.Id == providerId && p.IsActive);
+        using var context = await GetContextAsync();
+        return await context.Set<StorageProvider>().AnyAsync(p => p.Id == providerId && p.IsActive);
     }
 
     public async Task<int> GetActiveProviderCountAsync()
     {
-        return await DbSet.CountAsync(p => p.IsActive);
+        using var context = await GetContextAsync();
+        return await context.Set<StorageProvider>().CountAsync(p => p.IsActive);
     }
 
     public async Task<IEnumerable<StorageProvider>> GetProvidersByLoadAsync()
     {
+        using var context = await GetContextAsync();
         // This is a simplified implementation
         // In a real scenario, you might want to track load metrics
-        return await DbSet.Where(p => p.IsActive)
+        return await context.Set<StorageProvider>().Where(p => p.IsActive)
                           .OrderBy(p => p.Type) // Simple ordering by type
                           .ToListAsync();
     }
 
     public async Task<int> GetChunkCountByProviderIdAsync(Guid providerId)
     {
-        return await DbSet.CountAsync(c => c.Id == providerId); // Simplified for now
+        using var context = await GetContextAsync();
+        return await context.Set<StorageProvider>().CountAsync(c => c.Id == providerId); // Simplified for now
     }
 }

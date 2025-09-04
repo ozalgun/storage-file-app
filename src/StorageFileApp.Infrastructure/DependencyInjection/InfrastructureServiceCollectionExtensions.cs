@@ -26,6 +26,14 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseNpgsql(connectionString);
         });
 
+        // DbContext Factory for repositories
+        services.AddDbContextFactory<StorageFileDbContext>(options =>
+        {
+            var connectionString = configuration.GetConnectionString("DefaultConnection") 
+                ?? "Host=localhost;Port=5432;Database=StorageFileApp;Username=storageuser;Password=storagepass123;Include Error Detail=true;";
+            options.UseNpgsql(connectionString);
+        });
+
         // Repositories
         services.AddScoped<IFileRepository, FileRepository>();
         services.AddScoped<IChunkRepository, ChunkRepository>();

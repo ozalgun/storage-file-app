@@ -2,49 +2,57 @@ using Microsoft.EntityFrameworkCore;
 using StorageFileApp.Application.Interfaces;
 using StorageFileApp.Domain.Entities.FileEntity;
 using StorageFileApp.Domain.Enums;
+using StorageFileApp.Domain.Events;
 using StorageFileApp.Infrastructure.Data;
 using FileEntity = StorageFileApp.Domain.Entities.FileEntity.File;
 
 namespace StorageFileApp.Infrastructure.Repositories;
 
-public class FileRepository(StorageFileDbContext context) : BaseRepository<FileEntity>(context), IFileRepository
+public class FileRepository(IDbContextFactory<StorageFileDbContext> contextFactory, IUnitOfWork unitOfWork, IDomainEventPublisher domainEventPublisher) : BaseRepository<FileEntity>(contextFactory, unitOfWork, domainEventPublisher), IFileRepository
 {
     public async Task<IEnumerable<FileEntity>> GetByStatusAsync(FileStatus status)
     {
-        return await DbSet.Where(f => f.Status == status).ToListAsync();
+        using var context = await GetContextAsync();
+        return await context.Set<FileEntity>().Where(f => f.Status == status).ToListAsync();
     }
 
     public async Task<IEnumerable<FileEntity>> GetByNameAsync(string name)
     {
-        return await DbSet.Where(f => f.Name.Contains(name)).ToListAsync();
+        using var context = await GetContextAsync();
+        return await context.Set<FileEntity>().Where(f => f.Name.Contains(name)).ToListAsync();
     }
 
     public async Task<IEnumerable<FileEntity>> GetBySizeRangeAsync(long minSize, long maxSize)
     {
-        return await DbSet.Where(f => f.Size >= minSize && f.Size <= maxSize).ToListAsync();
+        using var context = await GetContextAsync();
+        return await context.Set<FileEntity>().Where(f => f.Size >= minSize && f.Size <= maxSize).ToListAsync();
     }
 
     public async Task<IEnumerable<FileEntity>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
     {
-        return await DbSet.Where(f => f.CreatedAt >= startDate && f.CreatedAt <= endDate).ToListAsync();
+        using var context = await GetContextAsync();
+        return await context.Set<FileEntity>().Where(f => f.CreatedAt >= startDate && f.CreatedAt <= endDate).ToListAsync();
     }
 
     public async Task<FileEntity?> GetByChecksumAsync(string checksum)
     {
-        return await DbSet.FirstOrDefaultAsync(f => f.Checksum == checksum);
+        using var context = await GetContextAsync();
+        return await context.Set<FileEntity>().FirstOrDefaultAsync(f => f.Checksum == checksum);
     }
 
     public async Task<IEnumerable<FileEntity>> SearchAsync(string searchTerm)
     {
-        return await DbSet.Where(f => f.Name.Contains(searchTerm) || 
+        using var context = await GetContextAsync();
+        return await context.Set<FileEntity>().Where(f => f.Name.Contains(searchTerm) || 
                                       f.Metadata.Description != null && f.Metadata.Description.Contains(searchTerm))
-                           .ToListAsync();
+                            .ToListAsync();
     }
 
     public async Task<(IEnumerable<FileEntity> Files, int TotalCount)> GetPagedAsync(
         int pageNumber, int pageSize, FileStatus? status = null, string? searchTerm = null)
     {
-        var query = DbSet.AsQueryable();
+        using var context = await GetContextAsync();
+        var query = context.Set<FileEntity>().AsQueryable();
 
         if (status.HasValue)
         {
@@ -69,6 +77,7 @@ public class FileRepository(StorageFileDbContext context) : BaseRepository<FileE
 
     public async Task<int> GetCountAsync()
     {
-        return await DbSet.CountAsync();
+        using var context = await GetContextAsync();
+        return await context.Set<FileEntity>().CountAsync();
     }
 }
