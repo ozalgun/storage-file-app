@@ -31,7 +31,12 @@ public class StorageProviderRepository(IDbContextFactory<StorageFileDbContext> c
     public async Task<IEnumerable<StorageProvider>> GetAvailableProvidersAsync()
     {
         using var context = await GetContextAsync();
-        return await context.Set<StorageProvider>().Where(p => p.IsActive).ToListAsync();
+        var providers = await context.Set<StorageProvider>().Where(p => p.IsActive).ToListAsync();
+        
+        // Shuffle providers to ensure varied round-robin distribution
+        // This prevents database order from affecting chunk distribution
+        var random = new Random();
+        return providers.OrderBy(x => random.Next()).ToList();
     }
 
     public async Task<bool> IsProviderAvailableAsync(Guid providerId)

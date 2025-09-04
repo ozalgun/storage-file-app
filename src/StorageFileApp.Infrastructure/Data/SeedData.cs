@@ -35,16 +35,6 @@ public static class SeedData
                 connectionString: "BasePath=storage/local"
             ),
             new StorageProvider(
-                name: "Backup File System Storage",
-                type: StorageProviderType.FileSystem,
-                connectionString: "BasePath=storage/backup"
-            ),
-            new StorageProvider(
-                name: "Archive File System Storage",
-                type: StorageProviderType.FileSystem,
-                connectionString: "BasePath=storage/archive"
-            ),
-            new StorageProvider(
                 name: "MinIO S3 Storage",
                 type: StorageProviderType.MinIO,
                 connectionString: "ServiceURL=http://localhost:9000;AccessKey=minioadmin;SecretKey=minioadmin123;BucketName=storage-file-app"

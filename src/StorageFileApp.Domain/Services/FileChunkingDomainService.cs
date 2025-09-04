@@ -40,12 +40,18 @@ public class FileChunkingDomainService : IFileChunkingDomainService
         if (!storageProviderIdsList.Any())
             throw new InvalidFileOperationException("CreateChunks", "At least one storage provider is required");
         
+        // Shuffle provider IDs to ensure true round-robin distribution
+        // This prevents the same provider order from database affecting distribution
+        // Use file ID as seed for deterministic but varied distribution
+        var random = new Random(file.Id.GetHashCode());
+        var shuffledProviderIds = storageProviderIdsList.OrderBy(x => random.Next()).ToList();
+        
         var chunks = new List<FileChunk>();
         var storageProviderIndex = 0;
         
         foreach (var chunkInfo in chunkInfos)
         {
-            var storageProviderId = storageProviderIdsList[storageProviderIndex % storageProviderIdsList.Count];
+            var storageProviderId = shuffledProviderIds[storageProviderIndex % shuffledProviderIds.Count];
             
             var chunk = new FileChunk(
                 file.Id, 
