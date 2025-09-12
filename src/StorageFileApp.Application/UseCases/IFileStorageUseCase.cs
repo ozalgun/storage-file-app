@@ -4,7 +4,7 @@ namespace StorageFileApp.Application.UseCases;
 
 public interface IFileStorageUseCase
 {
-    Task<FileStorageResult> StoreFileAsync(StoreFileRequest request, byte[] fileBytes);
+    Task<FileStorageResult> StoreFileAsync(StoreFileRequest request, byte[] fileBytes, string? filePath = null);
     Task<FileRetrievalResult> RetrieveFileAsync(RetrieveFileRequest request);
     Task<FileDeletionResult> DeleteFileAsync(DeleteFileRequest request);
     Task<FileStatusResult> GetFileStatusAsync(GetFileStatusRequest request);

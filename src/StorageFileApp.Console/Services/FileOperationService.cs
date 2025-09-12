@@ -121,7 +121,7 @@ public class FileOperationService(
                     CustomProperties: new Dictionary<string, string> { { "Checksum", checksum } }
                 );
                 
-                var result = await _fileStorageUseCase.StoreFileAsync(request, fileBytes ?? Array.Empty<byte>());
+                var result = await _fileStorageUseCase.StoreFileAsync(request, fileBytes ?? Array.Empty<byte>(), filePath);
                 
                 if (result.Success)
                 {

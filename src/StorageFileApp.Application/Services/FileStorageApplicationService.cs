@@ -39,7 +39,7 @@ public class FileStorageApplicationService(
     private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     private readonly ILogger<FileStorageApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    public async Task<FileStorageResult> StoreFileAsync(StoreFileRequest request, byte[] fileBytes)
+    public async Task<FileStorageResult> StoreFileAsync(StoreFileRequest request, byte[] fileBytes, string? filePath = null)
     {
         try
         {
@@ -94,21 +94,44 @@ public class FileStorageApplicationService(
                 _logger.LogInformation("Starting chunking process for large file: {FileName}, Size: {FileSize}", 
                     request.FileName, file.Size);
                 
-                // Use streaming approach for large files
-                using var fileStream = new MemoryStream(fileBytes);
-                var chunkingRequest = new ChunkFileRequest(file.Id, FileStream: fileStream);
-                var chunkingResult = await _chunkingUseCase.ChunkFileAsync(chunkingRequest);
-                
-                if (!chunkingResult.Success)
+                // Use real streaming approach for large files
+                if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
                 {
-                    _logger.LogWarning("Chunking failed for file {FileName}: {ErrorMessage}", 
-                        request.FileName, chunkingResult.ErrorMessage);
-                    // Continue with file storage even if chunking fails
+                    // Use actual file stream for memory efficiency
+                    using var fileStream = File.OpenRead(filePath);
+                    var chunkingRequest = new ChunkFileRequest(file.Id, FileStream: fileStream);
+                    var chunkingResult = await _chunkingUseCase.ChunkFileAsync(chunkingRequest);
+                    
+                    if (!chunkingResult.Success)
+                    {
+                        _logger.LogWarning("Chunking failed for file {FileName}: {ErrorMessage}", 
+                            request.FileName, chunkingResult.ErrorMessage);
+                        // Continue with file storage even if chunking fails
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Chunking completed for file: {FileName}, Chunks: {ChunkCount}", 
+                            request.FileName, chunkingResult.Chunks?.Count ?? 0);
+                    }
                 }
                 else
                 {
-                    _logger.LogInformation("Chunking completed for file: {FileName}, Chunks: {ChunkCount}", 
-                        request.FileName, chunkingResult.Chunks?.Count ?? 0);
+                    // Fallback to traditional approach if file path not available
+                    _logger.LogWarning("File path not available, using traditional chunking approach");
+                    var chunkingRequest = new ChunkFileRequest(file.Id, FileBytes: fileBytes);
+                    var chunkingResult = await _chunkingUseCase.ChunkFileAsync(chunkingRequest);
+                    
+                    if (!chunkingResult.Success)
+                    {
+                        _logger.LogWarning("Chunking failed for file {FileName}: {ErrorMessage}", 
+                            request.FileName, chunkingResult.ErrorMessage);
+                        // Continue with file storage even if chunking fails
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Chunking completed for file: {FileName}, Chunks: {ChunkCount}", 
+                            request.FileName, chunkingResult.Chunks?.Count ?? 0);
+                    }
                 }
             }
             
