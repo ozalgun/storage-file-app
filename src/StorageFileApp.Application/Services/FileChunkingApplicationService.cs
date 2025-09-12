@@ -110,8 +110,9 @@ public class FileChunkingApplicationService(
                             {
                                 var storageService = _storageProviderFactory.GetStorageService(assignedProvider);
                                 
-                                // Store chunk data (in real implementation, this would use the actual chunk data)
-                                var storeResult = await storageService.StoreChunkAsync(fileChunk, new byte[0]);
+                                // Store chunk data from streaming service
+                                var chunkData = result.ChunkData ?? new byte[result.Size];
+                                var storeResult = await storageService.StoreChunkAsync(fileChunk, chunkData);
                                 
                                 if (storeResult)
                                 {

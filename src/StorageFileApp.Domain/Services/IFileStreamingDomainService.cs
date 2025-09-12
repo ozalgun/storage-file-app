@@ -37,6 +37,7 @@ public class ChunkProcessingResult
     public bool IsSuccess { get; set; }
     public string? ErrorMessage { get; set; }
     public TimeSpan ProcessingTime { get; set; }
+    public byte[]? ChunkData { get; set; }
 }
 
 public class StreamingProgress

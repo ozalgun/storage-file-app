@@ -108,6 +108,7 @@ public class FileStreamingDomainService : IFileStreamingDomainService
             }
             
             result.Size = chunkData.Length;
+            result.ChunkData = chunkData; // Store the actual chunk data
             
             // Calculate checksum
             using var sha256 = SHA256.Create();
