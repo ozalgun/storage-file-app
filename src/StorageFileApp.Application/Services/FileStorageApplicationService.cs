@@ -64,10 +64,18 @@ public class FileStorageApplicationService(
                 }
             }
             
-            // 3. Calculate checksum from file bytes
+            // 3. Calculate checksum from file bytes or file path
             string checksum;
-            using (var stream = new MemoryStream(fileBytes))
+            if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
             {
+                // Use file path for large files (memory efficient)
+                using var fileStream = File.OpenRead(filePath);
+                checksum = await _integrityService.CalculateFileChecksumAsync(fileStream);
+            }
+            else
+            {
+                // Use file bytes for small files
+                using var stream = new MemoryStream(fileBytes);
                 checksum = await _integrityService.CalculateFileChecksumAsync(stream);
             }
             
