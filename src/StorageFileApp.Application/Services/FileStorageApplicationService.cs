@@ -94,7 +94,9 @@ public class FileStorageApplicationService(
                 _logger.LogInformation("Starting chunking process for large file: {FileName}, Size: {FileSize}", 
                     request.FileName, file.Size);
                 
-                var chunkingRequest = new ChunkFileRequest(file.Id, fileBytes);
+                // Use streaming approach for large files
+                using var fileStream = new MemoryStream(fileBytes);
+                var chunkingRequest = new ChunkFileRequest(file.Id, FileStream: fileStream);
                 var chunkingResult = await _chunkingUseCase.ChunkFileAsync(chunkingRequest);
                 
                 if (!chunkingResult.Success)

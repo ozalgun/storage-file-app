@@ -60,6 +60,7 @@ public class SimpleApplicationServiceTests
         var storageStrategyServiceMock = new Mock<IStorageStrategyService>();
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var loggerMock = new Mock<ILogger<FileChunkingApplicationService>>();
+        var streamingServiceMock = new Mock<IFileStreamingDomainService>();
 
         // Act & Assert
         var exception = Record.Exception(() => new FileChunkingApplicationService(
@@ -68,6 +69,7 @@ public class SimpleApplicationServiceTests
             storageProviderRepositoryMock.Object,
             storageServiceMock.Object,
             chunkingServiceMock.Object,
+            streamingServiceMock.Object,
             mergingServiceMock.Object,
             integrityServiceMock.Object,
             optimizationServiceMock.Object,

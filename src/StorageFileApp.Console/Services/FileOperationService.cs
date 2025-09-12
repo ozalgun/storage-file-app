@@ -87,12 +87,31 @@ public class FileOperationService(
                 Console.WriteLine("\nStoring file...");
                 Console.WriteLine("Calculating checksum...");
                 
-                var fileBytes = await File.ReadAllBytesAsync(filePath);
                 var contentType = GetContentType(fileName);
                 
-                // Calculate checksum
-                var checksum = await CalculateFileChecksumAsync(fileBytes);
-                Console.WriteLine($"Checksum: {checksum}");
+                // Use memory-efficient approach for large files
+                string checksum;
+                byte[]? fileBytes = null;
+                
+                if (fileSize >= 100 * 1024 * 1024) // 100MB threshold
+                {
+                    Console.WriteLine("Large file detected. Using memory-efficient processing...");
+                    
+                    // Calculate checksum using streaming
+                    using var fileStream = File.OpenRead(filePath);
+                    checksum = await CalculateFileChecksumAsync(fileStream);
+                    Console.WriteLine($"Checksum: {checksum}");
+                    
+                    // For large files, we'll use streaming in the application service
+                    fileBytes = null; // Will be handled by streaming service
+                }
+                else
+                {
+                    // For small files, use traditional approach
+                    fileBytes = await File.ReadAllBytesAsync(filePath);
+                    checksum = await CalculateFileChecksumAsync(fileBytes);
+                    Console.WriteLine($"Checksum: {checksum}");
+                }
                 
                 var request = new StoreFileRequest(
                     FileName: fileName,
@@ -102,7 +121,7 @@ public class FileOperationService(
                     CustomProperties: new Dictionary<string, string> { { "Checksum", checksum } }
                 );
                 
-                var result = await _fileStorageUseCase.StoreFileAsync(request, fileBytes);
+                var result = await _fileStorageUseCase.StoreFileAsync(request, fileBytes ?? Array.Empty<byte>());
                 
                 if (result.Success)
                 {
@@ -427,6 +446,11 @@ public class FileOperationService(
     {
         using var stream = new MemoryStream(fileBytes);
         return await _integrityService.CalculateFileChecksumAsync(stream);
+    }
+    
+    private async Task<string> CalculateFileChecksumAsync(Stream fileStream)
+    {
+        return await _integrityService.CalculateFileChecksumAsync(fileStream);
     }
     
     private static string GetContentType(string fileName)

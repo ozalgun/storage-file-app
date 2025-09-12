@@ -7,6 +7,7 @@ namespace StorageFileApp.Application.DTOs;
 public record ChunkFileRequest(
     Guid FileId,
     byte[]? FileBytes = null,
+    Stream? FileStream = null,
     long? ChunkSize = null,
     StorageStrategy? Strategy = null
 );

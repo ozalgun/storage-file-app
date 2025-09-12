@@ -20,6 +20,7 @@ public static class ApplicationServiceCollectionExtensions
         
         // Register Domain Services
         services.AddScoped<IFileChunkingDomainService, FileChunkingDomainService>();
+        services.AddScoped<IFileStreamingDomainService, FileStreamingDomainService>();
         services.AddScoped<IFileIntegrityDomainService, FileIntegrityDomainService>();
         services.AddScoped<IFileMergingDomainService, FileMergingDomainService>();
         services.AddScoped<IStorageStrategyDomainService, StorageStrategyDomainService>();
