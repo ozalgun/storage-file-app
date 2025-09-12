@@ -3,6 +3,7 @@ using StorageFileApp.Application.Interfaces;
 using StorageFileApp.Domain.Entities.StorageProviderEntity;
 using StorageFileApp.Domain.Enums;
 using StorageFileApp.Domain.Events;
+using StorageFileApp.Domain.Constants;
 using StorageFileApp.Infrastructure.Data;
 
 namespace StorageFileApp.Infrastructure.Repositories;
@@ -13,7 +14,20 @@ public class StorageProviderRepository(IDbContextFactory<StorageFileDbContext> c
     public async Task<IEnumerable<StorageProvider>> GetActiveProvidersAsync()
     {
         using var context = await GetContextAsync();
-        return await context.Set<StorageProvider>().Where(p => p.IsActive).ToListAsync();
+        var providers = await context.Set<StorageProvider>().Where(p => p.IsActive).ToListAsync();
+        
+        // Validate provider count limits
+        if (providers.Count() > DomainConstants.MAX_STORAGE_PROVIDERS)
+        {
+            throw new InvalidOperationException($"Too many active storage providers. Maximum allowed: {DomainConstants.MAX_STORAGE_PROVIDERS}");
+        }
+        
+        if (providers.Count() < DomainConstants.MIN_STORAGE_PROVIDERS)
+        {
+            throw new InvalidOperationException($"Insufficient storage providers. Minimum required: {DomainConstants.MIN_STORAGE_PROVIDERS}");
+        }
+        
+        return providers;
     }
 
     public async Task<IEnumerable<StorageProvider>> GetByTypeAsync(StorageProviderType type)

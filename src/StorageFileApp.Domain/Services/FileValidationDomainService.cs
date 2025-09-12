@@ -8,7 +8,6 @@ public class FileValidationDomainService : IFileValidationDomainService
 {
     
     private readonly string[] _forbiddenCharacters = { "<", ">", ":", "\"", "|", "?", "*", "\\", "/" };
-    private readonly string[] _allowedExtensions = { ".txt", ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".gif", ".mp4", ".avi", ".zip", ".rar" ,".bin"};
     
     public Task<bool> ValidateFileNameAsync(string fileName)
     {
@@ -42,6 +41,11 @@ public class FileValidationDomainService : IFileValidationDomainService
             return Task.FromResult(false);
             
         var extension = Path.GetExtension(fileName).ToLower();
+        
+        // Check if file extension is forbidden
+        if (DomainConstants.FORBIDDEN_FILE_EXTENSIONS.Contains(extension))
+            return Task.FromResult(false);
+            
         var allowedExtensionsList = allowedExtensions.Select(e => e.ToLower()).ToList();
         
         return Task.FromResult(allowedExtensionsList.Contains(extension));
@@ -77,11 +81,11 @@ public class FileValidationDomainService : IFileValidationDomainService
         if (!ValidateFileSizeAsync(file.Size).Result)
         {
             result.IsValid = false;
-            result.Errors.Add($"File size {file.Size} bytes is out of allowed range ({DomainConstants.MIN_FILE_SIZE} - {DomainConstants.MAX_FILE_SIZE} bytes)");
+            result.Errors.Add($"{DomainConstants.ERROR_FILE_TOO_LARGE}: {file.Size} bytes is out of allowed range ({DomainConstants.MIN_FILE_SIZE} - {DomainConstants.MAX_FILE_SIZE} bytes)");
         }
         
         // Validate file type
-        if (!ValidateFileTypeAsync(file.Name, _allowedExtensions).Result)
+        if (!ValidateFileTypeAsync(file.Name, DomainConstants.ALLOWED_FILE_EXTENSIONS).Result)
         {
             result.Warnings.Add($"File type {Path.GetExtension(file.Name)} may not be supported");
         }
@@ -122,7 +126,7 @@ public class FileValidationDomainService : IFileValidationDomainService
     
     public Task<IEnumerable<string>> GetSupportedExtensionsAsync()
     {
-        return Task.FromResult<IEnumerable<string>>(_allowedExtensions);
+        return Task.FromResult<IEnumerable<string>>(DomainConstants.ALLOWED_FILE_EXTENSIONS);
     }
     
     public Task<long> GetMaxFileSizeAsync()

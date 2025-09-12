@@ -20,14 +20,6 @@ public static class DomainConstants
     public const int MIN_STORAGE_PROVIDERS = 1;
     public const int MAX_CONCURRENT_OPERATIONS_PER_PROVIDER = 100;
     
-    // Replication limits
-    public const int MIN_REPLICATION_COUNT = 2;
-    public const int MAX_REPLICATION_COUNT = 5;
-    
-    // Performance thresholds
-    public const double COMPRESSION_THRESHOLD = 0.7;
-    public const int HEALTH_CHECK_INTERVAL_MINUTES = 5;
-    public const int REPLICATION_TIMEOUT_MINUTES = 30;
     
     // Default values
     public const int DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
