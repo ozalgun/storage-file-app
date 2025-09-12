@@ -1,5 +1,6 @@
 using StorageFileApp.Domain.Entities.ChunkEntity;
 using StorageFileApp.Domain.Entities.StorageProviderEntity;
+using StorageFileApp.Domain.Constants;
 using StorageFileApp.SharedKernel.Exceptions;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -9,7 +10,6 @@ namespace StorageFileApp.Domain.Services;
 
 public class FileStreamingDomainService : IFileStreamingDomainService
 {
-    private const int BufferSıze = 64 * 1024; // 64KB buffer
     private static readonly ConcurrentDictionary<Guid, StreamingProgress> ProgressTracker = new();
     
     public async Task<IEnumerable<ChunkProcessingResult>> ProcessFileStreamAsync(
@@ -98,7 +98,7 @@ public class FileStreamingDomainService : IFileStreamingDomainService
             
             while (totalBytesRead < chunkInfo.Size)
             {
-                var bytesToRead = (int)Math.Min(chunkInfo.Size - totalBytesRead, BufferSıze);
+                var bytesToRead = (int)Math.Min(chunkInfo.Size - totalBytesRead, (int)DomainConstants.MIN_CHUNK_SIZE);
                 var bytesRead = await fileStream.ReadAsync(chunkData, totalBytesRead, bytesToRead, cancellationToken);
                 
                 if (bytesRead == 0)
@@ -170,7 +170,7 @@ public class FileStreamingDomainService : IFileStreamingDomainService
             var totalRead = 0;
             while (totalRead < offset)
             {
-                var bytesRead = await fileStream.ReadAsync(buffer, totalRead, (int)Math.Min(offset - totalRead, BufferSıze), cancellationToken);
+                var bytesRead = await fileStream.ReadAsync(buffer, totalRead, (int)Math.Min(offset - totalRead, (int)DomainConstants.MIN_CHUNK_SIZE), cancellationToken);
                 if (bytesRead == 0)
                     throw new InvalidFileOperationException("ExtractChunkData", "Unexpected end of stream");
                 totalRead += bytesRead;
@@ -183,7 +183,7 @@ public class FileStreamingDomainService : IFileStreamingDomainService
         
         while (totalBytesRead < size)
         {
-            var bytesToRead = (int)Math.Min(size - totalBytesRead, BufferSıze);
+            var bytesToRead = (int)Math.Min(size - totalBytesRead, (int)DomainConstants.MIN_CHUNK_SIZE);
             var bytesRead = await fileStream.ReadAsync(chunkData, totalBytesRead, bytesToRead, cancellationToken);
             
             if (bytesRead == 0)

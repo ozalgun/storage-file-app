@@ -1,14 +1,11 @@
 using StorageFileApp.Domain.ValueObjects;
+using StorageFileApp.Domain.Constants;
 using FileEntity = StorageFileApp.Domain.Entities.FileEntity.File;
 
 namespace StorageFileApp.Domain.Services;
 
 public class FileValidationDomainService : IFileValidationDomainService
 {
-    private const long MAX_FILE_SIZE = 10L * 1024 * 1024 * 1024; // 10GB
-    private const long MIN_FILE_SIZE = 1; // 1 byte
-    private const int MAX_FILE_NAME_LENGTH = 255;
-    private const int MIN_FILE_NAME_LENGTH = 1;
     
     private readonly string[] _forbiddenCharacters = { "<", ">", ":", "\"", "|", "?", "*", "\\", "/" };
     private readonly string[] _allowedExtensions = { ".txt", ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".gif", ".mp4", ".avi", ".zip", ".rar" ,".bin"};
@@ -18,7 +15,7 @@ public class FileValidationDomainService : IFileValidationDomainService
         if (string.IsNullOrWhiteSpace(fileName))
             return Task.FromResult(false);
             
-        if (fileName.Length < MIN_FILE_NAME_LENGTH || fileName.Length > MAX_FILE_NAME_LENGTH)
+        if (fileName.Length < DomainConstants.MIN_FILE_NAME_LENGTH || fileName.Length > DomainConstants.MAX_FILE_NAME_LENGTH)
             return Task.FromResult(false);
             
         if (_forbiddenCharacters.Any(c => fileName.Contains(c)))
@@ -36,7 +33,7 @@ public class FileValidationDomainService : IFileValidationDomainService
     
     public Task<bool> ValidateFileSizeAsync(long fileSize)
     {
-        return Task.FromResult(fileSize >= MIN_FILE_SIZE && fileSize <= MAX_FILE_SIZE);
+        return Task.FromResult(fileSize >= DomainConstants.MIN_FILE_SIZE && fileSize <= DomainConstants.MAX_FILE_SIZE);
     }
     
     public Task<bool> ValidateFileTypeAsync(string fileName, IEnumerable<string> allowedExtensions)
@@ -80,7 +77,7 @@ public class FileValidationDomainService : IFileValidationDomainService
         if (!ValidateFileSizeAsync(file.Size).Result)
         {
             result.IsValid = false;
-            result.Errors.Add($"File size {file.Size} bytes is out of allowed range ({MIN_FILE_SIZE} - {MAX_FILE_SIZE} bytes)");
+            result.Errors.Add($"File size {file.Size} bytes is out of allowed range ({DomainConstants.MIN_FILE_SIZE} - {DomainConstants.MAX_FILE_SIZE} bytes)");
         }
         
         // Validate file type
@@ -130,11 +127,11 @@ public class FileValidationDomainService : IFileValidationDomainService
     
     public Task<long> GetMaxFileSizeAsync()
     {
-        return Task.FromResult(MAX_FILE_SIZE);
+        return Task.FromResult(DomainConstants.MAX_FILE_SIZE);
     }
     
     public Task<long> GetMinFileSizeAsync()
     {
-        return Task.FromResult(MIN_FILE_SIZE);
+        return Task.FromResult(DomainConstants.MIN_FILE_SIZE);
     }
 }

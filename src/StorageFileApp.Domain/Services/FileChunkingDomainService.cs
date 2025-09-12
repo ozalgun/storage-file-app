@@ -1,4 +1,5 @@
 using StorageFileApp.Domain.Entities.ChunkEntity;
+using StorageFileApp.Domain.Constants;
 using StorageFileApp.SharedKernel.Exceptions;
 using File = StorageFileApp.Domain.Entities.FileEntity.File;
 
@@ -6,9 +7,6 @@ namespace StorageFileApp.Domain.Services;
 
 public class FileChunkingDomainService : IFileChunkingDomainService
 {
-    private const long MIN_CHUNK_SIZE = 64 * 1024; // 64KB
-    private const long MAX_CHUNK_SIZE = 100 * 1024 * 1024; // 100MB
-    private const int MAX_CHUNK_COUNT = 10000; // Maximum chunk sayısı
     
     public IEnumerable<ChunkInfo> CalculateOptimalChunks(long fileSize)
     {
@@ -18,9 +16,9 @@ public class FileChunkingDomainService : IFileChunkingDomainService
         var optimalChunkSize = CalculateOptimalChunkSize(fileSize);
         var chunkCount = (int)Math.Ceiling((double)fileSize / optimalChunkSize);
         
-        if (chunkCount > MAX_CHUNK_COUNT)
+        if (chunkCount > DomainConstants.MAX_CHUNK_COUNT)
             throw new InvalidFileOperationException("CalculateOptimalChunks", 
-                $"File too large. Maximum {MAX_CHUNK_COUNT} chunks allowed.");
+                $"File too large. Maximum {DomainConstants.MAX_CHUNK_COUNT} chunks allowed.");
         
         return Enumerable.Range(0, chunkCount)
             .Select(i => 
@@ -96,15 +94,15 @@ public class FileChunkingDomainService : IFileChunkingDomainService
     {
         // Business rules for chunk sizing
         if (fileSize <= 1024 * 1024) // <= 1MB
-            return MIN_CHUNK_SIZE; // 64KB chunks
+            return DomainConstants.MIN_CHUNK_SIZE; // 64KB chunks
             
         if (fileSize < 100 * 1024 * 1024) // < 100MB
-            return 1024 * 1024; // 1MB chunks
+            return DomainConstants.DEFAULT_CHUNK_SIZE; // 1MB chunks
             
         if (fileSize < 1024 * 1024 * 1024) // < 1GB
             return 10 * 1024 * 1024; // 10MB chunks
             
-        return MAX_CHUNK_SIZE; // 100MB chunks
+        return DomainConstants.MAX_CHUNK_SIZE; // 100MB chunks
     }
     
     private string CalculateChecksum(byte[] data)
