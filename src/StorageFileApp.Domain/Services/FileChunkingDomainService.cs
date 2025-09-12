@@ -26,7 +26,14 @@ public class FileChunkingDomainService : IFileChunkingDomainService
             .Select(i => 
             {
                 var offset = i * optimalChunkSize;
-                var size = Math.Min(optimalChunkSize, fileSize - offset);
+                var remainingBytes = fileSize - offset;
+                var size = Math.Min(optimalChunkSize, remainingBytes);
+                
+                // Son chunk için size kontrolü
+                if (size <= 0)
+                    throw new InvalidFileOperationException("CalculateOptimalChunks", 
+                        $"Invalid chunk size calculated for chunk {i}. Offset: {offset}, FileSize: {fileSize}");
+                
                 return new ChunkInfo(i, size, offset, string.Empty); // Checksum sonra hesaplanacak
             });
     }

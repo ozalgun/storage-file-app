@@ -9,8 +9,8 @@ namespace StorageFileApp.Domain.Services;
 
 public class FileStreamingDomainService : IFileStreamingDomainService
 {
-    private const int BUFFER_SIZE = 64 * 1024; // 64KB buffer
-    private static readonly ConcurrentDictionary<Guid, StreamingProgress> _progressTracker = new();
+    private const int BufferSıze = 64 * 1024; // 64KB buffer
+    private static readonly ConcurrentDictionary<Guid, StreamingProgress> ProgressTracker = new();
     
     public async Task<IEnumerable<ChunkProcessingResult>> ProcessFileStreamAsync(
         Stream fileStream, 
@@ -40,44 +40,34 @@ public class FileStreamingDomainService : IFileStreamingDomainService
             TotalBytes = fileSize,
             ElapsedTime = TimeSpan.Zero
         };
-        _progressTracker[fileId] = progress;
+        ProgressTracker[fileId] = progress;
         
         var stopwatch = Stopwatch.StartNew();
         var results = new List<ChunkProcessingResult>();
         
         try
         {
-            // Process chunks in parallel with controlled concurrency
-            var semaphore = new SemaphoreSlim(Environment.ProcessorCount, Environment.ProcessorCount);
-            var tasks = chunkInfos.Select(async (chunkInfo, index) =>
+            // Process chunks sequentially to avoid stream position issues
+            foreach (var (chunkInfo, index) in chunkInfos.Select((info, idx) => (info, idx)))
             {
-                await semaphore.WaitAsync(cancellationToken);
-                try
-                {
-                    return await ProcessChunkAsync(
-                        fileStream, 
-                        chunkInfo, 
-                        providers, 
-                        fileId, 
-                        index, 
-                        progress, 
-                        cancellationToken);
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
-            });
-            
-            var chunkResults = await Task.WhenAll(tasks);
-            results.AddRange(chunkResults);
+                var result = await ProcessChunkAsync(
+                    fileStream, 
+                    chunkInfo, 
+                    providers, 
+                    fileId, 
+                    index, 
+                    progress, 
+                    cancellationToken);
+                
+                results.Add(result);
+            }
             
             stopwatch.Stop();
             progress.ElapsedTime = stopwatch.Elapsed;
         }
         finally
         {
-            _progressTracker.TryRemove(fileId, out _);
+            ProgressTracker.TryRemove(fileId, out _);
         }
         
         return results;
@@ -102,8 +92,21 @@ public class FileStreamingDomainService : IFileStreamingDomainService
         
         try
         {
-            // Extract chunk data from stream
-            var chunkData = await ExtractChunkDataAsync(fileStream, chunkInfo.Offset, chunkInfo.Size, cancellationToken);
+            // Read chunk data sequentially from stream
+            var chunkData = new byte[chunkInfo.Size];
+            var totalBytesRead = 0;
+            
+            while (totalBytesRead < chunkInfo.Size)
+            {
+                var bytesToRead = (int)Math.Min(chunkInfo.Size - totalBytesRead, BufferSıze);
+                var bytesRead = await fileStream.ReadAsync(chunkData, totalBytesRead, bytesToRead, cancellationToken);
+                
+                if (bytesRead == 0)
+                    throw new InvalidFileOperationException("ProcessChunk", "Unexpected end of stream while reading chunk");
+                    
+                totalBytesRead += bytesRead;
+            }
+            
             result.Size = chunkData.Length;
             
             // Calculate checksum
@@ -166,7 +169,7 @@ public class FileStreamingDomainService : IFileStreamingDomainService
             var totalRead = 0;
             while (totalRead < offset)
             {
-                var bytesRead = await fileStream.ReadAsync(buffer, totalRead, (int)Math.Min(offset - totalRead, BUFFER_SIZE), cancellationToken);
+                var bytesRead = await fileStream.ReadAsync(buffer, totalRead, (int)Math.Min(offset - totalRead, BufferSıze), cancellationToken);
                 if (bytesRead == 0)
                     throw new InvalidFileOperationException("ExtractChunkData", "Unexpected end of stream");
                 totalRead += bytesRead;
@@ -179,7 +182,7 @@ public class FileStreamingDomainService : IFileStreamingDomainService
         
         while (totalBytesRead < size)
         {
-            var bytesToRead = (int)Math.Min(size - totalBytesRead, BUFFER_SIZE);
+            var bytesToRead = (int)Math.Min(size - totalBytesRead, BufferSıze);
             var bytesRead = await fileStream.ReadAsync(chunkData, totalBytesRead, bytesToRead, cancellationToken);
             
             if (bytesRead == 0)
@@ -212,7 +215,7 @@ public class FileStreamingDomainService : IFileStreamingDomainService
         Guid fileId, 
         CancellationToken cancellationToken = default)
     {
-        if (_progressTracker.TryGetValue(fileId, out var progress))
+        if (ProgressTracker.TryGetValue(fileId, out var progress))
         {
             // Calculate estimated remaining time
             if (progress.ProcessedChunks > 0 && progress.ElapsedTime.TotalSeconds > 0)

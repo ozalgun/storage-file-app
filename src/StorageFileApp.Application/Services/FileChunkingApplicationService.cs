@@ -5,6 +5,7 @@ using StorageFileApp.Domain.Services;
 using StorageFileApp.Domain.Enums;
 using StorageFileApp.Domain.Entities.ChunkEntity;
 using Microsoft.Extensions.Logging;
+using StorageFileApp.Domain.Entities.StorageProviderEntity;
 using DomainChunkInfo = StorageFileApp.Domain.Services.ChunkInfo;
 
 namespace StorageFileApp.Application.Services;
@@ -56,8 +57,9 @@ public class FileChunkingApplicationService(
             
             // 2. Get available storage providers
             var availableProviders = await _storageProviderRepository.GetAvailableProvidersAsync();
-            _logger.LogInformation("Found {ProviderCount} available storage providers", availableProviders.Count());
-            if (!availableProviders.Any())
+            var storageProviders = availableProviders as StorageProvider[] ?? availableProviders.ToArray();
+            _logger.LogInformation("Found {ProviderCount} available storage providers", storageProviders.Count());
+            if (!storageProviders.Any())
             {
                 _logger.LogWarning("No available storage providers found for chunking");
                 return new ChunkingResult(false, ErrorMessage: "No available storage providers");
@@ -82,7 +84,7 @@ public class FileChunkingApplicationService(
                 var streamingResults = await _streamingService.ProcessFileStreamAsync(
                     request.FileStream, 
                     file.Size, 
-                    availableProviders);
+                    storageProviders);
                 
                 // Process results in parallel
                 var semaphore = new SemaphoreSlim(Environment.ProcessorCount, Environment.ProcessorCount);
@@ -103,7 +105,7 @@ public class FileChunkingApplicationService(
                             );
                             
                             // Get storage provider and service
-                            var assignedProvider = availableProviders.FirstOrDefault(p => p.Id == result.StorageProviderId);
+                            var assignedProvider = storageProviders.FirstOrDefault(p => p.Id == result.StorageProviderId);
                             if (assignedProvider != null)
                             {
                                 var storageService = _storageProviderFactory.GetStorageService(assignedProvider);
@@ -163,7 +165,7 @@ public class FileChunkingApplicationService(
                 // Traditional processing for small files with parallel execution
                 _logger.LogInformation("Using traditional processing for file size: {FileSize} bytes", file.Size);
                 
-                var providerIds = availableProviders.Select(p => p.Id).ToList();
+                var providerIds = storageProviders.Select(p => p.Id).ToList();
                 var fileChunks = _chunkingService.CreateChunks(file, chunkInfos, providerIds);
                 
                 // Process chunks in parallel
@@ -183,7 +185,7 @@ public class FileChunkingApplicationService(
                         var chunkChecksum = await _integrityService.CalculateFileChecksumAsync(stream);
                         
                         // Get the storage provider that was already assigned by domain service
-                        var assignedProvider = availableProviders.FirstOrDefault(p => p.Id == chunk.StorageProviderId);
+                        var assignedProvider = storageProviders.FirstOrDefault(p => p.Id == chunk.StorageProviderId);
                         if (assignedProvider == null)
                         {
                             _logger.LogError("Assigned storage provider {ProviderId} not found for chunk {ChunkOrder}", 
