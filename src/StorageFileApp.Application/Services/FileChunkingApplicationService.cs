@@ -19,7 +19,6 @@ public class FileChunkingApplicationService(
     IFileStreamingDomainService streamingService,
     IFileMergingDomainService mergingService,
     IFileIntegrityDomainService integrityService,
-    IChunkOptimizationDomainService optimizationService,
     IStorageProviderFactory storageProviderFactory,
     IStorageStrategyService storageStrategyService,
     IUnitOfWork unitOfWork,
@@ -34,7 +33,6 @@ public class FileChunkingApplicationService(
     private readonly IFileStreamingDomainService _streamingService = streamingService ?? throw new ArgumentNullException(nameof(streamingService));
     private readonly IFileMergingDomainService _mergingService = mergingService ?? throw new ArgumentNullException(nameof(mergingService));
     private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
-    private readonly IChunkOptimizationDomainService _optimizationService = optimizationService ?? throw new ArgumentNullException(nameof(optimizationService));
     private readonly IStorageProviderFactory _storageProviderFactory = storageProviderFactory ?? throw new ArgumentNullException(nameof(storageProviderFactory));
     private readonly IStorageStrategyService _storageStrategyService = storageStrategyService ?? throw new ArgumentNullException(nameof(storageStrategyService));
     private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));

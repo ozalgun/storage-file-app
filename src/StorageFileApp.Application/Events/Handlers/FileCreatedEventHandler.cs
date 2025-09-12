@@ -52,8 +52,7 @@ public class FileCreatedEventHandler(
                 {
                     var chunkRequest = new Application.DTOs.ChunkFileRequest(
                         FileId: @event.File.Id,
-                        ChunkSize: null, // Use default chunk size
-                        Strategy: null // Use default strategy
+                        ChunkSize: null // Use default chunk size
                     );
                     
                     var chunkResult = await _fileChunkingUseCase.ChunkFileAsync(chunkRequest);

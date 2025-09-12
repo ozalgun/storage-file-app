@@ -21,7 +21,6 @@ public class SimpleApplicationServiceTests
         var chunkingServiceMock = new Mock<IFileChunkingDomainService>();
         var integrityServiceMock = new Mock<IFileIntegrityDomainService>();
         var validationServiceMock = new Mock<IFileValidationDomainService>();
-        var strategyServiceMock = new Mock<IStorageStrategyDomainService>();
         var chunkingUseCaseMock = new Mock<IFileChunkingUseCase>();
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         var loggerMock = new Mock<ILogger<FileStorageApplicationService>>();
@@ -36,7 +35,6 @@ public class SimpleApplicationServiceTests
             chunkingServiceMock.Object,
             integrityServiceMock.Object,
             validationServiceMock.Object,
-            strategyServiceMock.Object,
             chunkingUseCaseMock.Object,
             unitOfWorkMock.Object,
             loggerMock.Object));
@@ -55,7 +53,6 @@ public class SimpleApplicationServiceTests
         var chunkingServiceMock = new Mock<IFileChunkingDomainService>();
         var mergingServiceMock = new Mock<IFileMergingDomainService>();
         var integrityServiceMock = new Mock<IFileIntegrityDomainService>();
-        var optimizationServiceMock = new Mock<IChunkOptimizationDomainService>();
         var storageProviderFactoryMock = new Mock<IStorageProviderFactory>();
         var storageStrategyServiceMock = new Mock<IStorageStrategyService>();
         var unitOfWorkMock = new Mock<IUnitOfWork>();
@@ -72,7 +69,6 @@ public class SimpleApplicationServiceTests
             streamingServiceMock.Object,
             mergingServiceMock.Object,
             integrityServiceMock.Object,
-            optimizationServiceMock.Object,
             storageProviderFactoryMock.Object,
             storageStrategyServiceMock.Object,
             unitOfWorkMock.Object,

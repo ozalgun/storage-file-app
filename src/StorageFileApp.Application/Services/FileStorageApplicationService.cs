@@ -20,7 +20,6 @@ public class FileStorageApplicationService(
     IFileChunkingDomainService chunkingService,
     IFileIntegrityDomainService integrityService,
     IFileValidationDomainService validationService,
-    IStorageStrategyDomainService strategyService,
     IFileChunkingUseCase chunkingUseCase,
     IUnitOfWork unitOfWork,
     ILogger<FileStorageApplicationService> logger)
@@ -34,7 +33,6 @@ public class FileStorageApplicationService(
     private readonly IFileChunkingDomainService _chunkingService = chunkingService ?? throw new ArgumentNullException(nameof(chunkingService));
     private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
     private readonly IFileValidationDomainService _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
-    private readonly IStorageStrategyDomainService _strategyService = strategyService ?? throw new ArgumentNullException(nameof(strategyService));
     private readonly IFileChunkingUseCase _chunkingUseCase = chunkingUseCase ?? throw new ArgumentNullException(nameof(chunkingUseCase));
     private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     private readonly ILogger<FileStorageApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));

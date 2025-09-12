@@ -23,10 +23,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IFileStreamingDomainService, FileStreamingDomainService>();
         services.AddScoped<IFileIntegrityDomainService, FileIntegrityDomainService>();
         services.AddScoped<IFileMergingDomainService, FileMergingDomainService>();
-        services.AddScoped<IStorageStrategyDomainService, StorageStrategyDomainService>();
-        services.AddScoped<IChunkHealthDomainService, ChunkHealthDomainService>();
         services.AddScoped<IFileValidationDomainService, FileValidationDomainService>();
-        services.AddScoped<IChunkOptimizationDomainService, ChunkOptimizationDomainService>();
         
         // Register Domain Event Handlers
         services.AddScoped<IDomainEventHandler<FileCreatedEvent>, FileCreatedEventHandler>();

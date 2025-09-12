@@ -80,8 +80,7 @@ public class ChunkingOperationService(
                 
                 var request = new ChunkFileRequest(
                     FileId: fileGuid,
-                    ChunkSize: null, // Use default chunk size
-                    Strategy: null // Use default strategy
+                    ChunkSize: null // Use default chunk size
                 );
                 
                 var result = await _fileChunkingUseCase.ChunkFileAsync(request);
