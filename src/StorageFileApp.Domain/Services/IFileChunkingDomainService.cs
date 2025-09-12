@@ -7,7 +7,6 @@ public interface IFileChunkingDomainService
 {
     IEnumerable<ChunkInfo> CalculateOptimalChunks(long fileSize);
     IEnumerable<FileChunk> CreateChunks(File file, IEnumerable<ChunkInfo> chunkInfos, IEnumerable<Guid> storageProviderIds);
-    bool ValidateChunkIntegrity(FileChunk chunk, byte[] chunkData);
     long CalculateOptimalChunkSize(long fileSize);
 }
 

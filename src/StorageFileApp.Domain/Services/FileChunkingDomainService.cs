@@ -73,22 +73,6 @@ public class FileChunkingDomainService : IFileChunkingDomainService
         return chunks;
     }
     
-    public bool ValidateChunkIntegrity(FileChunk chunk, byte[] chunkData)
-    {
-        if (chunk == null)
-            throw new ArgumentNullException(nameof(chunk));
-            
-        if (chunkData == null)
-            throw new ArgumentNullException(nameof(chunkData));
-            
-        // Chunk size validation
-        if (chunkData.Length != chunk.Size)
-            return false;
-            
-        // Checksum validation (basit bir örnek)
-        var calculatedChecksum = CalculateChecksum(chunkData);
-        return string.Equals(calculatedChecksum, chunk.Checksum, StringComparison.OrdinalIgnoreCase);
-    }
     
     public long CalculateOptimalChunkSize(long fileSize)
     {
