@@ -9,61 +9,61 @@ public class FileValidationDomainService : IFileValidationDomainService
     
     private readonly string[] _forbiddenCharacters = { "<", ">", ":", "\"", "|", "?", "*", "\\", "/" };
     
-    public Task<bool> ValidateFileNameAsync(string fileName)
+    private bool ValidateFileName(string fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))
-            return Task.FromResult(false);
+            return false;
             
         if (fileName.Length < DomainConstants.MIN_FILE_NAME_LENGTH || fileName.Length > DomainConstants.MAX_FILE_NAME_LENGTH)
-            return Task.FromResult(false);
+            return false;
             
         if (_forbiddenCharacters.Any(c => fileName.Contains(c)))
-            return Task.FromResult(false);
+            return false;
             
         // Check for reserved names (Windows)
         var reservedNames = new[] { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9" };
         var nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName).ToUpper();
         
         if (reservedNames.Contains(nameWithoutExtension))
-            return Task.FromResult(false);
+            return false;
             
-        return Task.FromResult(true);
+        return true;
     }
     
-    public Task<bool> ValidateFileSizeAsync(long fileSize)
+    private bool ValidateFileSize(long fileSize)
     {
-        return Task.FromResult(fileSize >= DomainConstants.MIN_FILE_SIZE && fileSize <= DomainConstants.MAX_FILE_SIZE);
+        return fileSize >= DomainConstants.MIN_FILE_SIZE && fileSize <= DomainConstants.MAX_FILE_SIZE;
     }
     
-    public Task<bool> ValidateFileTypeAsync(string fileName, IEnumerable<string> allowedExtensions)
+    private bool ValidateFileType(string fileName, IEnumerable<string> allowedExtensions)
     {
         if (string.IsNullOrWhiteSpace(fileName))
-            return Task.FromResult(false);
+            return false;
             
         var extension = Path.GetExtension(fileName).ToLower();
         
         // Check if file extension is forbidden
         if (DomainConstants.FORBIDDEN_FILE_EXTENSIONS.Contains(extension))
-            return Task.FromResult(false);
+            return false;
             
         var allowedExtensionsList = allowedExtensions.Select(e => e.ToLower()).ToList();
         
-        return Task.FromResult(allowedExtensionsList.Contains(extension));
+        return allowedExtensionsList.Contains(extension);
     }
     
-    public Task<bool> ValidateFileMetadataAsync(FileMetadata metadata)
+    private bool ValidateFileMetadata(FileMetadata metadata)
     {
         if (metadata == null)
-            return Task.FromResult(false);
+            return false;
             
         if (string.IsNullOrWhiteSpace(metadata.ContentType))
-            return Task.FromResult(false);
+            return false;
             
         // Validate content type format
         if (!IsValidContentType(metadata.ContentType))
-            return Task.FromResult(false);
+            return false;
             
-        return Task.FromResult(true);
+        return true;
     }
     
     public Task<ValidationResult> ValidateFileForStorageAsync(FileEntity file)
@@ -71,27 +71,27 @@ public class FileValidationDomainService : IFileValidationDomainService
         var result = new ValidationResult { IsValid = true };
         
         // Validate file name
-        if (!ValidateFileNameAsync(file.Name).Result)
+        if (!ValidateFileName(file.Name))
         {
             result.IsValid = false;
             result.Errors.Add($"Invalid file name: {file.Name}");
         }
         
         // Validate file size
-        if (!ValidateFileSizeAsync(file.Size).Result)
+        if (!ValidateFileSize(file.Size))
         {
             result.IsValid = false;
             result.Errors.Add($"{DomainConstants.ERROR_FILE_TOO_LARGE}: {file.Size} bytes is out of allowed range ({DomainConstants.MIN_FILE_SIZE} - {DomainConstants.MAX_FILE_SIZE} bytes)");
         }
         
         // Validate file type
-        if (!ValidateFileTypeAsync(file.Name, DomainConstants.ALLOWED_FILE_EXTENSIONS).Result)
+        if (!ValidateFileType(file.Name, DomainConstants.ALLOWED_FILE_EXTENSIONS))
         {
             result.Warnings.Add($"File type {Path.GetExtension(file.Name)} may not be supported");
         }
         
         // Validate metadata
-        if (!ValidateFileMetadataAsync(file.Metadata).Result)
+        if (!ValidateFileMetadata(file.Metadata))
         {
             result.IsValid = false;
             result.Errors.Add("Invalid file metadata");

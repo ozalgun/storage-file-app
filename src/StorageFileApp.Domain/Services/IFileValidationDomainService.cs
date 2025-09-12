@@ -5,10 +5,6 @@ namespace StorageFileApp.Domain.Services;
 
 public interface IFileValidationDomainService
 {
-    Task<bool> ValidateFileNameAsync(string fileName);
-    Task<bool> ValidateFileSizeAsync(long fileSize);
-    Task<bool> ValidateFileTypeAsync(string fileName, IEnumerable<string> allowedExtensions);
-    Task<bool> ValidateFileMetadataAsync(FileMetadata metadata);
     Task<ValidationResult> ValidateFileForStorageAsync(FileEntity file);
 }
 
