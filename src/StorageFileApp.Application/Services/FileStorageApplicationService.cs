@@ -21,6 +21,7 @@ public class FileStorageApplicationService(
     IFileIntegrityDomainService integrityService,
     IFileValidationDomainService validationService,
     IFileChunkingUseCase chunkingUseCase,
+    IFileCacheService fileCacheService,
     IUnitOfWork unitOfWork,
     ILogger<FileStorageApplicationService> logger)
     : IFileStorageUseCase
@@ -34,6 +35,7 @@ public class FileStorageApplicationService(
     private readonly IFileIntegrityDomainService _integrityService = integrityService ?? throw new ArgumentNullException(nameof(integrityService));
     private readonly IFileValidationDomainService _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
     private readonly IFileChunkingUseCase _chunkingUseCase = chunkingUseCase ?? throw new ArgumentNullException(nameof(chunkingUseCase));
+    private readonly IFileCacheService _fileCacheService = fileCacheService ?? throw new ArgumentNullException(nameof(fileCacheService));
     private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     private readonly ILogger<FileStorageApplicationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -92,6 +94,9 @@ public class FileStorageApplicationService(
             // 6. Save file to repository
             await _fileRepository.AddAsync(file);
             await _unitOfWork.SaveChangesAsync();
+            
+            // 6.1. Invalidate file list cache
+            await _fileCacheService.InvalidateFileListCacheAsync();
             
             // 7. Process file chunking if file is large enough
             _logger.LogInformation("File size: {FileSize} bytes, threshold: {Threshold} bytes", file.Size, 1024 * 1024);
@@ -412,10 +417,32 @@ public class FileStorageApplicationService(
             _logger.LogInformation("Listing files with page: {PageNumber}, size: {PageSize}", 
                 request.PageNumber, request.PageSize);
             
-            // 1. Get files from repository with pagination
+            // 1. Check cache first (only for first page)
+            if (request.PageNumber == 1)
+            {
+                var cacheKey = $"file_list_page_{request.PageNumber}_size_{request.PageSize}";
+                var cachedFiles = await _fileCacheService.GetFileListAsync(cacheKey);
+                if (cachedFiles != null)
+                {
+                    _logger.LogInformation("Returning cached file list for page: {PageNumber}", request.PageNumber);
+                    var fileSummaries = cachedFiles.Select(f => new FileSummary(
+                        Id: f.Id,
+                        Name: f.Name,
+                        Size: f.Size,
+                        Status: f.Status,
+                        CreatedAt: f.CreatedAt,
+                        UpdatedAt: f.UpdatedAt
+                    )).ToList();
+                    
+                    return new FileListResult(true, Files: fileSummaries, TotalCount: fileSummaries.Count, 
+                        PageNumber: request.PageNumber, PageSize: request.PageSize);
+                }
+            }
+            
+            // 2. Get files from repository with pagination
             var (files, totalCount) = await _fileRepository.GetPagedAsync(request.PageNumber, request.PageSize);
             
-            // 2. Convert to DTOs
+            // 3. Convert to DTOs
             var fileDtos = new List<FileSummary>();
             foreach (var file in files)
             {
@@ -430,6 +457,22 @@ public class FileStorageApplicationService(
                     CreatedAt: file.CreatedAt,
                     UpdatedAt: file.CreatedAt // Using CreatedAt as UpdatedAt for now
                 ));
+            }
+            
+            // 4. Cache the result (only for first page)
+            if (request.PageNumber == 1)
+            {
+                var cacheKey = $"file_list_page_{request.PageNumber}_size_{request.PageSize}";
+                var fileDtosForCache = fileDtos.Select(f => new FileDTO(
+                    Id: f.Id,
+                    Name: f.Name,
+                    Size: f.Size,
+                    Status: f.Status,
+                    CreatedAt: f.CreatedAt,
+                    UpdatedAt: f.UpdatedAt ?? f.CreatedAt
+                )).ToList();
+                
+                await _fileCacheService.SetFileListAsync(cacheKey, fileDtosForCache);
             }
             
             var result = new FileListResult(true, Files: fileDtos, TotalCount: totalCount, 

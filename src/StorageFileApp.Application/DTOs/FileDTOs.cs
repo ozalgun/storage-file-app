@@ -79,6 +79,15 @@ public record FileSummary(
     DateTime? UpdatedAt
 );
 
+public record FileDTO(
+    Guid Id,
+    string Name,
+    long Size,
+    FileStatus Status,
+    DateTime CreatedAt,
+    DateTime UpdatedAt
+);
+
 public record FileMetadata(
     string ContentType,
     string? Description,

@@ -23,6 +23,7 @@ public class SimpleApplicationServiceTests
         var validationServiceMock = new Mock<IFileValidationDomainService>();
         var chunkingUseCaseMock = new Mock<IFileChunkingUseCase>();
         var unitOfWorkMock = new Mock<IUnitOfWork>();
+        var fileCacheServiceMock = new Mock<IFileCacheService>();
         var loggerMock = new Mock<ILogger<FileStorageApplicationService>>();
 
         // Act & Assert
@@ -36,6 +37,7 @@ public class SimpleApplicationServiceTests
             integrityServiceMock.Object,
             validationServiceMock.Object,
             chunkingUseCaseMock.Object,
+            fileCacheServiceMock.Object,
             unitOfWorkMock.Object,
             loggerMock.Object));
 

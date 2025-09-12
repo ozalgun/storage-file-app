@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using StorageFileApp.Application.Interfaces;
 using StorageFileApp.Domain.Events;
 using StorageFileApp.Infrastructure.Data;
@@ -32,6 +33,14 @@ public static class InfrastructureServiceCollectionExtensions
             var connectionString = configuration.GetConnectionString("DefaultConnection") 
                 ?? "Host=localhost;Port=5432;Database=StorageFileApp;Username=storageuser;Password=storagepass123;Include Error Detail=true;";
             options.UseNpgsql(connectionString);
+        });
+
+        // Redis Cache
+        services.AddStackExchangeRedisCache(options =>
+        {
+            var redisHost = configuration["REDIS_HOST"] ?? "localhost";
+            var redisPort = configuration["REDIS_PORT"] ?? "6379";
+            options.Configuration = $"{redisHost}:{redisPort}";
         });
 
         // Repositories
@@ -79,6 +88,10 @@ public static class InfrastructureServiceCollectionExtensions
             
             return new AmazonS3Client(credentials, config);
         });
+
+        // Cache Services
+        services.AddScoped<ICacheService, RedisCacheService>();
+        services.AddScoped<IFileCacheService, FileCacheService>();
 
         // Domain Event Publisher
         services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
